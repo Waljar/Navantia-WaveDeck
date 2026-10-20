@@ -112,4 +112,4 @@ It syntax-checks the STM32 files against stub headers, tests the kinematics, wav
 
 ## Licence
 
-Add the licence your course or team uses. The Archivo typeface in `docs/assets/fonts` is under the SIL Open Font License (see the licence file next to it).
+All rights reserved
