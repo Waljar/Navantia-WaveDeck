@@ -100,14 +100,6 @@ sh sim/build_tests.sh        # needs gcc; node is optional for the JavaScript ch
 
 It syntax-checks the STM32 files against stub headers, tests the kinematics, waves, tilt and leg difference limits and the step engine, tests the calibration storage (including records written before the limits existed), runs scripted sessions of the whole menu on a model of the legs (setup, every mode, finding the limits, a flood of jog keys, a lost character, re-homing a raised platform, a power cycle), and compares the JavaScript with the C code. The control panel's key sending is checked separately in a browser against a simulated serial port: `npm i playwright && node tools/test-control.js`. None of this replaces a first run on the rig with a hand near the driver power switches.
 
-## Publish the site
-
-1. Create a GitHub repository and push this folder (`git init`, `git add .`, `git commit`, `git remote add origin ...`, `git push -u origin main`).
-2. On GitHub: *Settings → Pages → Build and deployment → Source: GitHub Actions*.
-3. The *Publish site* workflow runs on every push that touches `docs/` and the site appears at `https://<user>.github.io/<repository>/`.
-
-The control panel needs HTTPS or `localhost`, which GitHub Pages provides. Web Serial works in desktop Chrome and Edge only; use PuTTY elsewhere. Close PuTTY before connecting from the browser: only one program can hold the serial port.
-
 ## Troubleshooting
 
 - **A leg homes the wrong way or never stops:** check the switch wiring (NC to the pin) and `HOME_DIR_LEGn` in `plat_config.h`.
