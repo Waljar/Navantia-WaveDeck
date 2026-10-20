@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sea Platform: a three-leg motion platform for sea states 1 to 4</title>
+<meta name="description" content="A three-motor stepper platform that reproduces the heave, pitch and roll of a vessel in sea states 1 to 4, with a visualiser and a browser control panel.">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  .hero { padding: clamp(1.8rem, 4.5vw, 3.4rem) 0 clamp(2rem, 4vw, 3.2rem); }
+  .hero-top { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr); gap: clamp(1.2rem, 4vw, 3rem); align-items: center; margin-bottom: 1.8rem; }
+  .hero h1 { max-width: 15ch; margin-bottom: 1.1rem; }
+  .cta { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.4rem; }
+  #pv { width: 100%; height: clamp(240px, 30vw, 330px); display: block; border: 1.5px solid var(--ink); cursor: grab; touch-action: none; }
+  .strip { border: 1.5px solid var(--ink); }
+  .strip-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.2rem; padding: 0.7rem 0.9rem; border-bottom: 1.5px solid var(--ink); }
+  .strip-bar .info { flex: 1 1 260px; font-weight: 560; font-stretch: 96%; min-width: 0; }
+  .strip-bar .info b { font-weight: 760; }
+  #strip { width: 100%; height: clamp(210px, 28vw, 290px); display: block; }
+  .modes td:first-child { width: 4.2rem; white-space: nowrap; }
+  .modes td:nth-child(2) { font-weight: 700; font-stretch: 108%; white-space: nowrap; padding-right: 1.6rem; }
+  .spark { width: 100%; min-width: 0; height: 54px; display: block; }
+  @media (max-width: 640px) {
+    .ss thead { display: none; }
+    .ss tr { display: grid; grid-template-columns: 2rem 1fr auto; gap: 0.1rem 0.8rem; padding: 0.7rem 0; border-bottom: 1px solid var(--grid-strong); }
+    .ss td { border: 0; padding: 0; }
+    .ss td:nth-child(3) { grid-column: 3; grid-row: 1; text-align: right; }
+    .ss td:nth-child(4) { grid-column: 2 / span 2; grid-row: 2; color: var(--mute); font-size: 0.92rem; }
+    .ss td:nth-child(4)::before { content: "Peak period "; }
+    .ss td:nth-child(5) { grid-column: 1 / -1; grid-row: 3; }
+    .modes thead { display: none; }
+    .modes tr { display: grid; grid-template-columns: 2.6rem 1fr; padding: 0.7rem 0; border-bottom: 1px solid var(--grid-strong); }
+    .modes td { border: 0; padding: 0; }
+    .modes td:nth-child(3) { grid-column: 2; }
+  }
+  .ss td { vertical-align: middle; }
+  .pipe { list-style: none; margin: 1.6rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; border: 1.5px solid var(--ink); }
+  .pipe li { padding: 1rem 0.9rem 1.1rem; border-right: 1.5px solid var(--ink); position: relative; }
+  .pipe li:last-child { border-right: 0; }
+  .pipe li::after { content: ""; position: absolute; right: -9px; top: 1.15rem; width: 16px; height: 16px; background: var(--paper); border-top: 1.5px solid var(--ink); border-right: 1.5px solid var(--ink); transform: rotate(45deg) scale(0.8); z-index: 1; }
+  .pipe li:last-child::after { display: none; }
+  .pipe h3 { margin-bottom: 0.45rem; font-size: 1rem; }
+  .pipe p { font-size: 0.92rem; line-height: 1.45; margin: 0; color: var(--mute); }
+  .pipe .k { display: block; height: 4px; width: 36px; margin-bottom: 0.7rem; }
+  @media (max-width: 980px) {
+    .pipe { grid-template-columns: 1fr 1fr; }
+    .pipe li { border-bottom: 1.5px solid var(--ink); } .pipe li:nth-child(2n) { border-right: 0; } .pipe li::after { display: none; }
+    .hero-top { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) { .pipe { grid-template-columns: 1fr; } .pipe li { border-right: 0; } }
+  .steps { counter-reset: s; list-style: none; margin: 1.4rem 0 0; padding: 0; display: grid; gap: 1.1rem; max-width: 760px; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 2.4rem 1fr; gap: 0.2rem 0.6rem; }
+  .steps li::before { content: counter(s); font: 800 1.5rem/1.1 var(--font); font-stretch: 125%; color: var(--accent); }
+  .steps p { margin: 0 0 0.3rem; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: start; }
+  @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+  .tests { list-style: none; padding: 0; margin: 1.2rem 0 0; display: grid; gap: 0.9rem; max-width: 780px; }
+  .tests li { padding-left: 1.3rem; position: relative; }
+  .tests li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 0.6rem; height: 0.6rem; background: var(--pitch); }
+  .tests strong { font-weight: 700; }
+  footer { border-top: 1.5px solid var(--ink); padding: 1.6rem 0 2.4rem; color: var(--mute); font-size: 0.92rem; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 0.6rem 2rem; justify-content: space-between; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 17c4-9 8-9 12 0s8 9 12 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M6 27v-5M16 27v-5M26 27v-5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Sea Platform</a>
+  <nav class="nav" aria-label="Sections">
+    <a class="hide-s" href="#modes">Modes</a>
+    <a class="hide-s" href="#sea">Sea states</a>
+    <a class="hide-s" href="#how">How it works</a>
+    <a class="hide-s" href="#run">Run it</a>
+    <a class="hide-s" href="measure.html">Measure</a>
+    <a class="hide-s" href="guide.html">Run guide</a>
+    <a href="visualiser.html">Visualiser</a>
+    <a href="control.html">Control panel</a>
+    <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme" title="Light / dark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-top">
+      <div>
+        <h1>A platform that moves like a ship at sea</h1>
+        <p class="lead">Three stepper-driven legs reproduce the heave, pitch and roll of a vessel in sea states 1 to 4. The traces below come from the same wave generator the firmware runs.</p>
+        <div class="cta">
+          <a class="btn" href="visualiser.html">Open the visualiser</a>
+          <a class="btn ghost" href="control.html">Control panel</a>
+          <a class="btn ghost" id="repo" href="#run" hidden>Source on GitHub</a>
+        </div>
+      </div>
+      <canvas id="pv" role="img" aria-label="Model of the platform moving with the sea. Drag to turn it."></canvas>
+    </div>
+
+    <div class="strip">
+      <div class="strip-bar">
+        <div class="seg" id="ssSeg" role="group" aria-label="Sea state">
+          <button type="button" data-ss="1" aria-pressed="false">1</button><button type="button" data-ss="2" aria-pressed="false">2</button><button type="button" data-ss="3" aria-pressed="true">3</button><button type="button" data-ss="4" aria-pressed="false">4</button>
+        </div>
+        <div class="info" id="stripInfo" aria-live="polite"></div>
+        <button class="btn small ghost" type="button" id="stripPause" aria-pressed="false">Pause</button>
+      </div>
+      <canvas id="strip" role="img" aria-label="Live strip chart of heave, pitch and roll"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="modes">
+  <div class="wrap">
+    <h2>Six modes in one program</h2>
+    <p class="lead">One menu on the serial port or in the control panel. The key is what you press.</p>
+    <table class="modes" style="margin-top:1.4rem">
+      <thead><tr><th scope="col">Key</th><th scope="col">Mode</th><th scope="col">What it does</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>1</kbd></td><td>Setup</td><td>Homes the legs, then you jog each leg until the platform is level and mark its minimum. Jog all three together and mark the maximum. Save to flash so the numbers survive a power cycle.</td></tr>
+        <tr><td><kbd>2</kbd></td><td>Heave cycle</td><td>All legs rise from minimum to maximum and back, pausing at each end. Pause, speed and the length of the end pause change while it moves.</td></tr>
+        <tr><td><kbd>3</kbd></td><td>Pitch and roll circles</td><td>The platform tilts in a slow circle, with or without heave. Size, period and direction change live.</td></tr>
+        <tr><td><kbd>4</kbd></td><td>Waves</td><td>Irregular waves for sea states 1 to 4. Press 1 to 4 to change sea state while it runs, <kbd>r</kbd> for a new random sea.</td></tr>
+        <tr><td><kbd>5</kbd></td><td>MAX platform</td><td>The same waves, exaggerated until they use the full travel. If the motors cannot follow at normal speed, the wave clock slows down. <kbd>d</kbd> sweeps heave, pitch and roll through their whole range in turn.</td></tr>
+        <tr><td><kbd>6</kbd></td><td>Manual</td><td>Set heave in millimetres, pitch and roll in degrees: step with keys or type a value such as <code>h12.5</code>.</td></tr>
+      </tbody>
+    </table>
+    <p class="mute" style="margin-top:1rem"><kbd>q</kbd> goes back to the menu from any mode and <kbd>x</kbd> stops everything at once. At the menu, <kbd>g</kbd> sends every leg back to rest (the minimums) and <kbd>h</kbd> homes again.</p>
+  </div>
+</section>
+
+<section class="block" id="sea">
+  <div class="wrap">
+    <h2>Sea states 1 to 4</h2>
+    <p class="lead">Each sea is a sum of 24 sine waves drawn from a Bretschneider spectrum, with the vessel following the wave slope for pitch and roll.</p>
+    <table class="ss" style="margin-top:1.4rem">
+      <thead><tr><th scope="col">Sea state</th><th scope="col">Description</th><th scope="col">Wave height Hs</th><th scope="col">Peak period</th><th scope="col">One minute of heave, same scale</th></tr></thead>
+      <tbody id="ssBody"></tbody>
+    </table>
+    <p class="mute" style="margin-top:1rem;max-width:70ch">The heights shown are scaled as Hs4 &times; (Hs / Hs4)<sup>0.75</sup>, so sea states 1 and 2 stay visible next to sea state 4. Set <code>WAVE_HS_EXPONENT</code> to 1 for true proportions.</p>
+  </div>
+</section>
+
+<section class="block" id="how">
+  <div class="wrap">
+    <h2>From waves to motor steps</h2>
+    <p class="lead">Modes never touch the motor pins. They hand a target pose to the chain below, and every stage can only make the motion gentler.</p>
+    <ol class="pipe">
+      <li><span class="k" style="background:var(--heave)"></span><h3>Wave generator</h3><p>Sums 24 sine waves into heave, pitch and roll.</p></li>
+      <li><span class="k" style="background:var(--heave)"></span><h3>Pose limiter</h3><p>Fits the motion to the platform&rsquo;s range and slows the wave clock if the legs could not follow.</p></li>
+      <li><span class="k" style="background:var(--pitch)"></span><h3>Inverse kinematics</h3><p>Closed-form crank angle for each leg from heave, pitch and roll.</p></li>
+      <li><span class="k" style="background:var(--pitch)"></span><h3>Step engine</h3><p>A 10&nbsp;kHz clock follows each leg target within speed and acceleration limits and brakes before the travel limits.</p></li>
+      <li><span class="k" style="background:var(--roll)"></span><h3>CL86T drivers</h3><p>STEP and DIR pulses, 2000 per motor turn through a 10:1 gearbox.</p></li>
+      <li><span class="k" style="background:var(--roll)"></span><h3>Cranks and links</h3><p>20&nbsp;000 steps per crank turn, 0.018&deg; per step.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="block" id="run">
+  <div class="wrap two">
+    <div>
+      <h2>Set up and run</h2>
+      <ol class="steps">
+        <li><div><p><b>Copy the firmware.</b> Put the contents of <code>firmware/Core/Inc</code> and <code>firmware/Core/Src</code> into the CubeIDE project, replacing <code>main.c</code> and <code>main.h</code>. Do not regenerate code from the .ioc afterwards without checking <code>main.c</code>.</p></div></li>
+        <li><div><p><b>Build and flash.</b> If the linker cannot find <code>sinf</code>, add <code>m</code> under Linker &rarr; Libraries.</p></div></li>
+        <li><div><p><b>Connect.</b> Open the <a href="control.html">control panel</a> in Chrome or Edge, or PuTTY on the ST-Link serial port at 115200, 8N1.</p></div></li>
+        <li><div><p><b>Set up.</b> Press <kbd>1</kbd>. Homing runs first. Jog the minimums, jog the maximum, press <kbd>s</kbd> to save.</p></div></li>
+        <li><div><p><b>Run a mode.</b> Press <kbd>2</kbd> to <kbd>6</kbd>. Keep a hand near the driver power switches the first time.</p></div></li>
+      </ol>
+    </div>
+    <div>
+      <h3 style="margin-bottom:0.8rem">Wiring</h3>
+      <table>
+        <thead><tr><th scope="col">Leg</th><th scope="col">STEP</th><th scope="col">DIR</th><th scope="col">Limit switch</th></tr></thead>
+        <tbody>
+          <tr><td>X (front)</td><td>PA0</td><td>PA1</td><td>PB9</td></tr>
+          <tr><td>Y (back right)</td><td>PB4</td><td>PB5</td><td>PB0</td></tr>
+          <tr><td>Z (back left)</td><td>PA8</td><td>PA9</td><td>PA4</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:1rem">Drivers: CL86T at 2000 pulses per revolution, PUL&minus; and DIR&minus; to ground. Switches are normally closed with the common to ground and the internal pull-up on the pin, so a pressed or broken switch reads high. Pitch is positive when the front (Z) leg rises, roll is positive when the X side rises.</p>
+      <p class="note">The millimetre and degree values use placeholder geometry until the real crank, link and radii are entered in <code>plat_config.h</code>. The legs stay inside their limits whatever the geometry says. The visualiser&rsquo;s geometry panel writes the lines to paste.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="tested">
+  <div class="wrap">
+    <h2>What has been checked</h2>
+    <ul class="tests">
+      <li><strong>The JavaScript matches the C.</strong> 461 comparisons of waves, kinematics and wave scaling against the firmware&rsquo;s own output, worst wave difference 0.0001&nbsp;m.</li>
+      <li><strong>Kinematics round trip.</strong> Forward kinematics recovers the pose from the leg positions to within 0.002 on 1,615 reachable poses.</li>
+      <li><strong>The sea has the right size.</strong> Twenty minutes of simulated waves match the analytic heave, pitch, roll and velocity statistics to within half a percent.</li>
+      <li><strong>Step engine.</strong> No overshoot onto a target, never above the speed limit, follows a sine within 5 steps, and stops softly in front of a travel limit even when the target stops abruptly.</li>
+      <li><strong>Whole program.</strong> A scripted session through homing, setup, saving, every mode and a power cycle ran for 735 simulated seconds with no limit violations.</li>
+    </ul>
+    <p class="note" style="margin-top:1.6rem">All of this ran on a PC with a model of the legs. The program has not yet run on the rig. Homing and pulse timing are ported from the code that has, so check the first run with a hand on the driver power switches.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Sea Platform &middot; firmware, visualiser and control panel</span>
+    <span>Archivo typeface under the SIL Open Font License</span>
+  </div>
+</footer>
+
+<script src="assets/sea.js"></script>
+<script>
+(function () {
+  SEA.themeToggle(document.getElementById('theme'));
+  const $ = (id) => document.getElementById(id);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* repo link from the address: user.github.io/repo/ -> github.com/user/repo */
+  (function () {
+    const m = location.hostname.match(/^([^.]+)\.github\.io$/), repo = location.pathname.split('/').filter(Boolean)[0];
+    if (m && repo && !/\.html$/.test(repo)) { const a = $('repo'); a.href = 'https://github.com/' + m[1] + '/' + repo; a.hidden = false; }
+  })();
+
+  /* ---- hero: the same generator and limiter as the firmware ---- */
+  const geom = SEA.defaultGeom(), cal = SEA.defaultCal();
+  const kin = new SEA.Kin(geom, cal);
+  let mapper = new SEA.WaveMapper({ kin, ss: 3, maxMode: false });
+  const view = new SEA.PlatformView($('pv'), kin);
+  const P = SEA.palette(), k = kin.caps, f = 0.5;
+  const series = [
+    { label: 'Heave', unit: 'mm', color: P.heave, range: f * k.heaveRange / 2, decimals: 1 },
+    { label: 'Pitch', unit: 'deg', color: P.pitch, range: f * k.pitchCap, decimals: 2 },
+    { label: 'Roll', unit: 'deg', color: P.roll, range: f * k.rollCap, decimals: 2 }];
+  const chart = new SEA.StripChart($('strip'), series, { seconds: 30, hz: 20 });
+  document.addEventListener('sea-theme', () => chart.s.forEach((s, i) => (s.color = SEA.palette()[['heave', 'pitch', 'roll'][i]])));
+  let pose = { h: k.heaveMid, p: 0, r: 0 }, paused = reduced, acc = 0, chAcc = 0, last = performance.now();
+  function info() {
+    const s = SEA.SEA_STATES[mapper.ss];
+    $('stripInfo').innerHTML = '<b>' + s.name + ', ' + s.word + '.</b> Hs ' + s.hs.toFixed(2) + ' m, peak period ' + s.tp + ' s. Platform runs at ' + Math.round(mapper.sigma * 100) + '% of its range, time ×' + mapper.ts.toFixed(2) + '.';
+  }
+  function setSS(n) {
+    mapper.setSeaState(n); chart.clear();
+    for (let i = 0; i < 600; i++) { const r = mapper.step(0.05); chart.push([r.pose.h - k.heaveMid, r.pose.p, r.pose.r]); pose = r.pose; }
+    document.querySelectorAll('#ssSeg button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.ss === n)));
+    info();
+  }
+  document.querySelectorAll('#ssSeg button').forEach((b) => b.addEventListener('click', () => setSS(+b.dataset.ss)));
+  $('stripPause').addEventListener('click', () => { paused = !paused; $('stripPause').setAttribute('aria-pressed', String(paused)); $('stripPause').textContent = paused ? 'Play' : 'Pause'; });
+  if (reduced) { $('stripPause').setAttribute('aria-pressed', 'true'); $('stripPause').textContent = 'Play'; }
+  setSS(3);
+  function frame(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!paused) {
+      acc += dt;
+      while (acc >= 0.01) {
+        acc -= 0.01; const r = mapper.step(0.01); if (r.keep >= 0) pose = r.pose;
+        chAcc += 0.01; if (chAcc >= 0.05) { chAcc -= 0.05; chart.push([pose.h - k.heaveMid, pose.p, pose.r]); }
+      }
+    }
+    view.setPose(pose); view.draw(); chart.draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* ---- sea state table with one minute of heave per row, all on the same scale ---- */
+  const body = $('ssBody');
+  const peak = 1.8;
+  SEA.SEA_STATES.slice(1).forEach((s) => {
+    const w = new SEA.Waves(s.ss, 1), pts = [];
+    for (let i = 0; i < 300; i++) { w.advance(0.2); pts.push(w.sample().h); }
+    const path = pts.map((h, i) => (i ? 'L' : 'M') + (i * 2).toFixed(1) + ' ' + (30 - Math.max(-1, Math.min(1, h / peak)) * 26).toFixed(1)).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><b>' + s.ss + '</b></td><td>' + s.word.charAt(0).toUpperCase() + s.word.slice(1) + '</td><td>' + s.hs.toFixed(2) + ' m</td><td>' + s.tp.toFixed(1) + ' s</td>' +
+      '<td><svg class="spark" viewBox="0 0 600 60" preserveAspectRatio="none" role="img" aria-label="Heave trace for sea state ' + s.ss + '"><path d="M0 30H600" stroke="var(--grid-strong)" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="' + path + '" fill="none" stroke="var(--heave)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg></td>';
+    body.appendChild(tr);
+  });
+})();
+</script>
+</body>
+</html>

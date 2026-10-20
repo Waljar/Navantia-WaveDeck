@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to run the platform</title>
+<meta name="description" content="Step by step: check the wiring, load the firmware, connect, home, set the limits, run each mode, go to rest and shut down. Written with the exact messages the program prints.">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  .page { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: clamp(1.4rem, 3.5vw, 3.5rem); padding: clamp(1.6rem, 3vw, 2.6rem) 0 4rem; align-items: start; }
+  .toc { position: sticky; top: 76px; font-size: 0.93rem; }
+  .toc b { display: block; margin-bottom: 0.5rem; font-stretch: 108%; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: t; border-left: 1.5px solid var(--ink); }
+  .toc li { counter-increment: t; }
+  .toc a { display: block; padding: 0.32rem 0 0.32rem 0.8rem; color: var(--ink); text-decoration: none; border-left: 4px solid transparent; margin-left: -1.5px; }
+  .toc a::before { content: counter(t) ". "; color: var(--mute); }
+  .toc a:hover { border-left-color: var(--accent); }
+  h1 { font-size: clamp(1.9rem, 4vw, 3rem); max-width: 16ch; margin-bottom: 0.8rem; }
+  section.g { padding: 2rem 0 0.4rem; border-top: 1.5px solid var(--ink); margin-top: 2.2rem; scroll-margin-top: 70px; }
+  section.g:first-of-type { margin-top: 1.6rem; }
+  section.g > h2 { display: flex; gap: 0.7rem; align-items: baseline; margin-bottom: 0.9rem; }
+  section.g > h2 .n { font-variant-numeric: tabular-nums; color: var(--accent); }
+  ol.steps { list-style: none; margin: 1rem 0 1.2rem; padding: 0; counter-reset: s; }
+  ol.steps > li { counter-increment: s; position: relative; padding: 0 0 1.1rem 2.7rem; max-width: 70ch; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; font: 800 0.9rem/1 var(--font); }
+  ol.steps > li::after { content: ""; position: absolute; left: 0.9rem; top: 2rem; bottom: 0.15rem; width: 1.5px; background: var(--grid-strong); }
+  ol.steps > li:last-child::after { display: none; }
+  ol.steps p { margin: 0 0 0.45rem; }
+  pre.term { margin: 0.5rem 0 0.7rem; padding: 0.75rem 0.95rem; background: #0e1b24; color: #dbe9f0; border-radius: 3px; overflow-x: auto; font: 500 0.84rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; max-width: 92ch; white-space: pre; }
+  pre.term .k { color: #ffb48a; font-weight: 700; }
+  .call { border: 1.5px solid var(--ink); padding: 0.8rem 1rem; margin: 1.1rem 0; max-width: 72ch; background: var(--surface); }
+  .call b.t { display: block; margin-bottom: 0.2rem; font-stretch: 108%; }
+  .call.warn { border-color: #b3261e; border-left-width: 8px; } .call.warn b.t { color: #b3261e; }
+  .call.ok { border-left: 8px solid var(--ok); }
+  .call p { margin: 0 0 0.3rem; } .call p:last-child { margin: 0; }
+  ul.check { list-style: none; margin: 0.6rem 0 1rem; padding: 0; max-width: 70ch; }
+  ul.check li { position: relative; padding: 0.4rem 0 0.4rem 1.9rem; border-bottom: 1px solid var(--grid-strong); }
+  ul.check li::before { content: ""; position: absolute; left: 0; top: 0.62rem; width: 1.05rem; height: 1.05rem; border: 2px solid var(--ink); border-radius: 2px; }
+  .keys td:first-child { white-space: nowrap; width: 7.2rem; }
+  table.keys, table.tbl { margin: 0.7rem 0 1.2rem; }
+  .tbl td:first-child { font-weight: 650; }
+  .tbl td, .keys td { vertical-align: top; }
+  .acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 1.2rem 0 0.4rem; }
+  @media screen and (max-width: 900px) {
+    .page { grid-template-columns: minmax(0, 1fr); } .toc { position: static; } .toc ol { columns: 2; border-left: 0; } .toc a { border-left: 0; padding-left: 0; }
+    table.tbl, table.keys, .tbl tbody, .keys tbody { display: block; width: 100%; }
+    .tbl thead, .keys thead { display: none; }
+    .tbl tr, .keys tr { display: block; padding: 0.7rem 0; border-bottom: 1px solid var(--grid-strong); }
+    .tbl td, .keys td { display: block; border: 0; padding: 0 0 0.15rem; width: auto !important; }
+  }
+  @media print {
+    .bar, .toc, .acts { display: none !important; }
+    .page { grid-template-columns: 1fr; padding: 0; }
+    body { background: #fff; --paper: #fff; --surface: #fff; font-size: 10.5pt; }
+    pre.term { background: #fff; color: #000; border: 1px solid #000; font-size: 8.5pt; white-space: pre-wrap; overflow-wrap: anywhere; }
+    pre.term .k { color: #000; text-decoration: underline; }
+    .call, ol.steps > li, tr, pre.term { break-inside: avoid; }
+    h2, h3 { break-after: avoid; } table[aria-label="Pin map"] { break-inside: avoid; }
+    a { text-decoration: none; color: #000; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 17c4-9 8-9 12 0s8 9 12 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M6 27v-5M16 27v-5M26 27v-5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Sea Platform</a>
+  <nav class="nav" aria-label="Pages">
+    <a href="index.html">Project</a><a href="measure.html">Measure</a><a href="guide.html" aria-current="page">Run guide</a><a href="visualiser.html">Visualiser</a><a href="control.html">Control panel</a>
+    <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme" title="Light / dark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+</header>
+
+<main class="wrap page">
+  <nav class="toc" aria-label="Sections">
+    <b>On this page</b>
+    <ol>
+      <li><a href="#before">Before you power up</a></li>
+      <li><a href="#flash">Load the firmware</a></li>
+      <li><a href="#connect">Connect</a></li>
+      <li><a href="#setup">First run: home and set limits</a></li>
+      <li><a href="#modes">Run the modes</a></li>
+      <li><a href="#rest">Rest, home, stop</a></li>
+      <li><a href="#panel">Control panel</a></li>
+      <li><a href="#show">Lock and TV display</a></li>
+      <li><a href="#shutdown">Shut down</a></li>
+      <li><a href="#night">Presentation run</a></li>
+      <li><a href="#fix">If something goes wrong</a></li>
+    </ol>
+  </nav>
+
+  <div>
+    <h1>How to run the platform</h1>
+    <p class="lead">From a cold start to waves on the platform. Follow the sections in order the first time. Lines in dark boxes are what the program prints, so you can check each step worked.</p>
+    <div class="acts"><button class="btn small ghost" type="button" id="print">Print this guide</button><a class="btn small ghost" href="measure.html">Measurements sheet</a></div>
+
+    <div class="call warn"><b class="t">Keep your hand near the driver power switches</b>
+      <p>The program stops the legs on the limit switches and has speed limits, but it is not a safety circuit. The only true emergency stop is switching off driver power. Clear people and loose objects from the platform and from under it.</p></div>
+
+    <!-- 1 -->
+    <section class="g" id="before">
+      <h2><span class="n">1</span>Before you power up</h2>
+      <p>Tick each of these with the power off.</p>
+      <ul class="check">
+        <li>The platform sits on a firm, level surface. Outdoors, shield the laptop screen from sun and keep cables off the ground where legs can reach them.</li>
+        <li>Each crank can swing through its full range without touching a link, a cable or the frame.</li>
+        <li>The three drivers are set to <b>2000 pulses per revolution</b>. With the 10:1 gearboxes, 20&#8239;000 steps are one turn of a crank.</li>
+        <li>Each driver&rsquo;s <b>PUL&minus;</b> and <b>DIR&minus;</b> go to a Nucleo ground. Signals follow this table.</li>
+        <li>Each limit switch is wired <b>normally closed</b>: common to ground, the other contact to its pin. A broken wire then looks the same as a pressed switch, and the program stops.</li>
+        <li>Each switch is positioned so its crank presses it at the <b>bottom</b> of travel, and nothing else can reach it.</li>
+        <li>Driver power is <b>off</b>. The Nucleo is connected to the computer with a USB cable that carries data (not a charge-only cable).</li>
+      </ul>
+      <table class="tbl" aria-label="Pin map">
+        <thead><tr><th>Leg</th><th>STEP pin</th><th>DIR pin</th><th>Limit switch pin</th></tr></thead>
+        <tbody>
+          <tr><td>X (front)</td><td>PA0</td><td>PA1</td><td>PB9</td></tr>
+          <tr><td>Y (back right)</td><td>PB4</td><td>PB5</td><td>PB0</td></tr>
+          <tr><td>Z (back left)</td><td>PA8</td><td>PA9</td><td>PA4</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 2 -->
+    <section class="g" id="flash">
+      <h2><span class="n">2</span>Load the firmware</h2>
+      <p>Skip this section if the board already runs the latest program and you only want to use it.</p>
+      <ol class="steps">
+        <li><p>Open the project <b>Test2</b> in STM32CubeIDE.</p></li>
+        <li><p>From the repository, copy every file in <code>firmware/Core/Inc</code> into the project&rsquo;s <code>Core/Inc</code> and every file in <code>firmware/Core/Src</code> into <code>Core/Src</code>. Say yes to replace <code>main.c</code> and <code>main.h</code>.</p></li>
+        <li><p>Edit <code>Core/Inc/plat_config.h</code> if you have measured the geometry (<a href="measure.html">Measure page</a>, button <em>Show plat_config.h lines</em>). Without it the program still works, but mm and degree values are estimates and the menu says <em>geometry NOT SET</em>.</p></li>
+        <li><p>Choose <em>Project &rarr; Build Project</em>. If the linker complains about <code>sinf</code> or <code>sqrtf</code>, open <em>Properties &rarr; C/C++ Build &rarr; Settings &rarr; MCU GCC Linker &rarr; Libraries</em> and add <code>m</code>, then build again.</p></li>
+        <li><p>Press <em>Run</em> (the green button). If CubeIDE asks about a debug configuration, accept the defaults. The board resets and starts the program.</p></li>
+      </ol>
+      <div class="call"><b class="t">If you ever regenerate code from the .ioc file</b>
+        <p>Check <code>MX_GPIO_Init</code> in <code>main.c</code> afterwards. The three limit inputs must be <code>GPIO_PULLUP</code>. Regenerated code can set them to no pull and the switches will read wrongly.</p></div>
+    </section>
+
+    <!-- 3 -->
+    <section class="g" id="connect">
+      <h2><span class="n">3</span>Connect to the board</h2>
+      <p>Only one program can use the board&rsquo;s serial port at a time. Use PuTTY <em>or</em> the control panel, and close the one before opening the other.</p>
+      <h3>Option A: PuTTY</h3>
+      <ol class="steps">
+        <li><p>Find the port. In Windows open <em>Device Manager &rarr; Ports (COM &amp; LPT)</em> and note the number beside <em>STMicroelectronics STLink Virtual COM Port</em>, for example <code>COM5</code>.</p></li>
+        <li><p>In PuTTY choose <em>Connection type: Serial</em>. Serial line: your COM number. Speed: <code>115200</code>. Under <em>Connection &rarr; Serial</em> check 8 data bits, 1 stop bit, parity none, flow control none.</p></li>
+        <li><p>Click <em>Open</em>, then press the black <b>RESET</b> button on the Nucleo. You should see:</p>
+<pre class="term">Sea platform firmware ready.
+Status: not homed | calibration: saved in flash | geometry: set | telemetry: off
+...
+=========== SEA PLATFORM ===========
+ 1  Setup: home, set minimums, set maximum, save
+ ...
+Select:</pre>
+          <p>Nothing appears? Press <kbd>Enter</kbd> once, then check the COM number and that the USB cable carries data.</p></li>
+      </ol>
+      <h3>Option B: the browser control panel</h3>
+      <ol class="steps">
+        <li><p>Open <a href="control.html">the control panel</a> in desktop <b>Chrome or Edge</b>. It must be the published HTTPS site or <code>localhost</code>.</p></li>
+        <li><p>Press <em>Connect</em> and choose <em>STLink Virtual COM Port</em>. The panel shows the same messages as PuTTY in its log, with buttons for each mode and a box to type keys.</p></li>
+      </ol>
+      <div class="call"><b class="t">Then switch on driver power</b>
+        <p>With the menu showing, switch on the three drivers. Doing it in this order means the board is already holding its outputs in a known state when the drivers wake up.</p></div>
+    </section>
+
+    <!-- 4 -->
+    <section class="g" id="setup">
+      <h2><span class="n">4</span>First run: home the legs and set the limits</h2>
+      <p>You do this once, then the values are saved in the board&rsquo;s flash and kept after a power cycle. Repeat it if you move a limit switch or change a crank.</p>
+
+      <h3>4a. Home</h3>
+      <ol class="steps">
+        <li><p>At the menu press <kbd>1</kbd> (Setup). The program reads the three switches:</p>
+<pre class="term">Switches: X released  Y released  Z released
+
+Clear the area and keep a hand near the driver power switches.
+Press any key to start homing (q = cancel)...</pre>
+          <p>If a switch says <b>PRESSED</b> while its crank is away from it, the program warns you and waits for <kbd>y</kbd> to continue or <kbd>q</kbd> to cancel. Cancel and check the wiring: a pressed reading with the crank away usually means the wire is broken or on the wrong pin.</p></li>
+        <li><p>Press any key. First all three legs come down <b>together</b>, in small alternating bursts, so no leg is ever far ahead of the others, however high the platform started. When a leg reaches its switch it stops and waits for the others. Then each leg in turn backs off 500 steps and approaches the switch slowly to latch the exact position:</p>
+<pre class="term">Lowering all three legs together to their switches...
+X is on its switch.
+Y is on its switch.
+Z is on its switch.
+Homing X...
+X homed OK.
+Homing Y...
+Y homed OK.
+Homing Z...
+Z homed OK.
+
+All legs homed. Moving to the minimum positions...
+Ready.</pre>
+          <p>If a leg moves <b>away</b> from its switch, or does not stop, press <kbd>q</kbd> or switch off driver power, then check <code>HOME_DIR_LEGn</code> in <code>plat_config.h</code> and the DIR wiring.</p></li>
+        <li><p>The Setup menu appears:</p>
+<pre class="term">=== SETUP ===
+ 1  set MINIMUMS (jog each leg until the platform is level)
+ 2  set MAXIMUM (jog all three legs together)
+ 3  motion limits (speed, acceleration)
+ 4  TILT limits (find the largest pitch and roll by hand)
+ 5  LEG DIFFERENCE limit (largest difference between two legs)
+ s  SAVE to flash      d  restore defaults (not saved)      h  re-home      q  back
+Select:</pre></li>
+      </ol>
+
+      <h3>4b. Set the minimums, one leg at a time</h3>
+      <p>The minimum is the lowest position where the platform is <b>level</b>. All three legs share one level height, so this fixes the rest position.</p>
+      <ol class="steps">
+        <li><p>Press <kbd>1</kbd>. Put a spirit level or phone level app on the platform.</p></li>
+        <li><p>Use <kbd>u</kbd> / <kbd>j</kbd> to raise or lower all three legs together until the platform is near the height you want as its bottom position. Press <kbd>+</kbd> for a bigger step (fast) or <kbd>-</kbd> for a smaller step (fine).</p></li>
+        <li><p>Select one leg with <kbd>x</kbd>, <kbd>y</kbd> or <kbd>z</kbd>, then nudge it with <kbd>d</kbd> (up) and <kbd>a</kbd> (down) until the platform is level. Repeat for the other legs. The readout shows the selected leg&rsquo;s letter, the three step counts, and the size of one jog step:</p>
+<pre class="term">[Z] X=1034 Y=1038 Z=1042 | step 0.50 deg (28 steps)</pre></li>
+        <li><p>When level, press <kbd>n</kbd> to mark all three legs&rsquo; minimums here (or <kbd>m</kbd> to mark only the selected leg). Press <kbd>p</kbd> to print what is stored:</p>
+<pre class="term">Minimums: X=1034 Y=1038 Z=1042   Maximums: X=8567 Y=8595 Z=8693</pre>
+          <p class="mute">These numbers are an example. Yours will differ.</p></li>
+        <li><p><kbd>g</kbd> sends the legs back to the saved minimums so you can check they come back level. Press <kbd>q</kbd> when done.</p></li>
+      </ol>
+      <div class="call"><b class="t">In this screen x, y and z choose a leg. They do not stop the platform.</b>
+        <p>Emergency stop <kbd>x</kbd> works in the modes, not while you are setting minimums. To stop here, switch off driver power.</p></div>
+      <p>This is also the moment to measure the geometry. Stay at the level minimum and follow the <a href="measure.html">measurements sheet</a>.</p>
+
+      <h3>4c. Set the maximum</h3>
+      <ol class="steps">
+        <li><p>Press <kbd>2</kbd>. The legs first go back to the saved minimums so they rise together from level.</p></li>
+        <li><p>Raise all three together with <kbd>u</kbd>. Go in small steps near the top. Stop <b>before</b> a crank is nearly straight up or down, the link nearly touches anything, or the motors sound strained.</p></li>
+        <li><p>Press <kbd>m</kbd> to mark the maximum. If it says <em>Too close to the minimums &ndash; raise the platform first</em>, raise it further. <kbd>g</kbd> returns to the minimums, <kbd>q</kbd> finishes.</p></li>
+      </ol>
+
+      <h3>4d. Find the largest pitch and roll (safety limits)</h3>
+      <p>The program only knows the geometry you typed in. You know where the links would touch the frame or each other. Here you tilt the platform by hand and mark the furthest you are willing to go in each of the four directions. Once saved, <b>every mode</b> (manual, circles, waves, MAX) shrinks its motion to stay inside them.</p>
+      <ol class="steps">
+        <li><p>At the Setup menu press <kbd>4</kbd>. The platform rises to the middle of the stroke, level (press <kbd>q</kbd> if you want to give up while it moves):</p>
+<pre class="term">--- Find the TILT limits by hand ---
+Tilt limits: pitch +0.00 / -0.00 deg, roll +0.00 / -0.00 deg   (0.00 = not set)</pre></li>
+        <li><p>Tilt it a little at a time: <kbd>w</kbd> / <kbd>s</kbd> pitch + / &minus; (front <b>X</b> up / down), <kbd>d</kbd> / <kbd>a</kbd> roll + / &minus; (back-left <b>Z</b> up / down). <kbd>u</kbd> / <kbd>j</kbd> change the height, <kbd>+</kbd> / <kbd>&minus;</kbd> change the step size (0.25&deg; to 2&deg;), <kbd>z</kbd> levels it again at the same height. Each press prints where it is:</p>
+<pre class="term">heave 0.0 mm (0 = mid) | pitch 6.00 deg | roll 0.00 deg</pre></li>
+        <li><p>When you reach the furthest you are happy with, let it stop moving, then press <kbd>p</kbd> to mark the <b>pitch</b> limit or <kbd>r</kbd> to mark the <b>roll</b> limit. Whichever side it is tilted towards is the side that gets marked:</p>
+<pre class="term">Pitch limit marked.
+Tilt limits: pitch +8.00 / -0.00 deg, roll +0.00 / -0.00 deg   (0.00 = not set)</pre>
+          <p>Do all four: pitch up, pitch down, roll one way, roll the other. <kbd>z</kbd> between them. A side you never mark stays <em>not set</em> and only the geometry limits it.</p></li>
+        <li><p><em>Tilt it further first (at least 1 degree; it measures 0.00 deg now).</em> means the platform was not tilted enough when you pressed the key, or it was still on its way. <kbd>l</kbd> lists the limits, <kbd>c</kbd> clears all four, <kbd>q</kbd> finishes and levels the platform.</p></li>
+      </ol>
+      <div class="call"><b class="t">The limits apply at every height</b>
+        <p>A tilt that is fine in the middle of the stroke may not be fine when the platform is low or high. Try <kbd>u</kbd> and <kbd>j</kbd> to find the height where it can tilt <em>least</em>, and mark the limit there. The screen warns <em>held by the leg ranges</em> when the geometry stops you before your own limit.</p></div>
+
+      <h3>4e. Set the largest difference between two legs</h3>
+      <p>A twisted platform loads the links and the ball joints much more than a level one. This limit is the biggest allowed difference between the heights of two legs, measured in steps above each leg&rsquo;s own minimum (one step is 0.018&deg; of crank). It is also enforced live: a leg that would get further ahead of the others is held back until they catch up.</p>
+      <ol class="steps">
+        <li><p>At the Setup menu press <kbd>5</kbd>. The legs go to the minimums first (<kbd>q</kbd> gives up):</p>
+<pre class="term">--- Set the largest DIFFERENCE between two legs ---
+[X] heights above the minimums: X=0 Y=0 Z=0 | difference now 0 steps (0.0 deg) | saved limit: not set</pre></li>
+        <li><p>Select a leg with <kbd>x</kbd> / <kbd>y</kbd> / <kbd>z</kbd> and raise <b>only that leg</b> with <kbd>d</kbd> (<kbd>a</kbd> lowers it). <kbd>u</kbd> / <kbd>j</kbd> move all three; <kbd>+</kbd> / <kbd>&minus;</kbd> change the step. Stop when the platform is as twisted as you are willing to allow:</p>
+<pre class="term">[X] heights above the minimums: X=278 Y=0 Z=0 | difference now 278 steps (5.0 deg) | saved limit: not set</pre></li>
+        <li><p>Let it stop, then press <kbd>m</kbd>:</p>
+<pre class="term">Leg difference limit marked: 278 steps.</pre>
+          <p><kbd>c</kbd> clears it, <kbd>g</kbd> sends the legs back to the minimums, <kbd>q</kbd> finishes and returns them there. It needs at least 200 steps to be accepted.</p></li>
+      </ol>
+      <div class="call ok"><b class="t">What you will see in use</b>
+        <p>Modes and the live model shrink their motion to respect it. If the real legs ever drift apart anyway (a leg lagging, a jog key), the engine holds the leading leg and prints <em>Leg difference limit reached: a leg is being held back until the others catch up.</em> It clears itself.</p></div>
+
+      <h3>4f. Save</h3>
+      <ol class="steps">
+        <li><p>Back at the Setup menu press <kbd>s</kbd>:</p>
+<pre class="term">Saved to flash. The platform will remember these after a power cycle.</pre>
+          <p>The save includes the tilt and leg difference limits. Press <kbd>q</kbd> to go to the main menu. Leave option <kbd>3</kbd> (speed and acceleration) at the tested values of 1500 steps/s and 1500 steps/s&sup2; unless you have time to experiment.</p></li>
+        <li><p>The status line should now say <em>calibration: saved in flash</em>, and the lines below it show your limits:</p>
+<pre class="term">Tilt limits (set by hand): pitch +8.0 / -8.0 deg, roll +8.0 / -6.0 deg  (0.0 = from the geometry only)
+Leg difference limit: 278 steps (5.0 deg of crank)</pre>
+          <p>If it says <em>defaults</em> after you re-flash the board, repeat 4b to 4f. Flash is shared with the program, so a re-flash can sometimes clear it.</p></li>
+      </ol>
+    </section>
+
+    <!-- 5 -->
+    <section class="g" id="modes">
+      <h2><span class="n">5</span>Run the modes</h2>
+      <p>Start gently and work up: <b>2</b>, then <b>6</b>, then <b>3</b>, then <b>4</b>, then <b>5</b>. Each mode homes first if it has not yet been homed this session. Inside any mode <kbd>q</kbd> returns to the menu (the legs finish what they are doing and settle) and <kbd>x</kbd> stops everything at once.</p>
+      <table class="keys tbl" aria-label="Modes and keys">
+        <thead><tr><th>Menu key</th><th>What it does</th><th>Keys inside the mode</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>2</kbd> Heave cycle</td><td>All three legs together, minimum to maximum and back, pausing at each end. Good first test of the saved range.</td><td><kbd>p</kbd> or space pause, <kbd>+</kbd>/<kbd>-</kbd> faster/slower, <kbd>[</kbd>/<kbd>]</kbd> shorter/longer pause at the ends</td></tr>
+          <tr><td><kbd>6</kbd> Manual</td><td>You set heave, pitch and roll. Check the directions here: pitch + raises the front (X), roll + raises the back-left (Z) side.</td><td><kbd>u</kbd>/<kbd>j</kbd> heave, <kbd>w</kbd>/<kbd>s</kbd> pitch, <kbd>d</kbd>/<kbd>a</kbd> roll, <kbd>+</kbd>/<kbd>-</kbd> step, <kbd>z</kbd> zero. Or type <code>h12.5</code> <kbd>Enter</kbd>, <code>p-3</code> <kbd>Enter</kbd>, <code>r2</code> <kbd>Enter</kbd></td></tr>
+          <tr><td><kbd>3</kbd> Circles</td><td>A tilt that goes round the platform, with optional heave.</td><td><kbd>+</kbd>/<kbd>-</kbd> tilt, <kbd>]</kbd>/<kbd>[</kbd> slower/faster, <kbd>h</kbd> heave on/off, <kbd>r</kbd> reverse, <kbd>p</kbd> pause</td></tr>
+          <tr><td><kbd>4</kbd> Waves</td><td>Sea states 1 to 4, generated from a wave spectrum. It starts at sea state 3.</td><td><kbd>1</kbd>&ndash;<kbd>4</kbd> sea state, <kbd>r</kbd> new random sea, <kbd>+</kbd>/<kbd>-</kbd> wave size, <kbd>]</kbd>/<kbd>[</kbd> time faster/slower, <kbd>p</kbd> pause</td></tr>
+          <tr><td><kbd>5</kbd> MAX platform</td><td>Exaggerated waves that use nearly the whole range, to show what the platform can do. Higher loads: watch the legs.</td><td>As Waves, plus <kbd>d</kbd> to switch between exaggerated waves and a full-range sweep of heave, pitch and roll</td></tr>
+        </tbody>
+      </table>
+      <p>The web panel has a button for every one of these keys, and the live view shows the platform moving. Waves print one line at the start and whenever you change something:</p>
+<pre class="term">Sea state 3 - slight | wave scale 32% of range (set by amplitude) | time x0.50 | trim 100%</pre>
+      <p><em>Wave scale</em> is how much of the platform&rsquo;s range the waves use. <em>Set by</em> tells you what held it back (the range, the speed limit or the acceleration limit). <em>Time x0.50</em> means the waves play at half speed so the legs can keep up. <kbd>+</kbd> and <kbd>-</kbd> change the <em>trim</em>.</p>
+      <div class="call ok"><b class="t">Wave sizes are shown, not scaled to scale</b>
+        <p>Sea states 1 and 2 are very small, so heights are shown as Hs&nbsp;4 &times; (Hs&nbsp;/&nbsp;Hs&nbsp;4)<sup>0.75</sup> so they stay visible. Say so when presenting. Set <code>WAVE_HS_EXPONENT</code> to <code>1.0f</code> in <code>plat_config.h</code> for true proportions.</p></div>
+    </section>
+
+    <!-- 6 -->
+    <section class="g" id="rest">
+      <h2><span class="n">6</span>Go to rest, home and stop</h2>
+      <table class="keys tbl" aria-label="Return, home and stop">
+        <thead><tr><th>Key</th><th>Where</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>g</kbd> or <em>Go to rest</em></td><td>Menu or panel</td><td>Every leg moves to its saved minimum and stops, level. It does <b>not</b> home again, so it is quick. It needs the platform to have been homed this session.
+<pre class="term">Going to rest: all legs to the minimums (x or q = stop)...
+At rest.</pre></td></tr>
+          <tr><td><kbd>h</kbd> or <em>Re-home</em></td><td>Menu or panel</td><td>Runs the full homing against the switches again. If the platform is up, all three legs first come down together to the minimums (<em>Lowering all three legs together before homing</em>, <kbd>q</kbd> or <kbd>x</kbd> stops it), then homing runs. After a fault the position is unknown, so the legs come down together in small bursts straight onto their switches. Use it after a stop with a fault, or if you think a leg has been pushed.</td></tr>
+          <tr><td><kbd>q</kbd></td><td>In a mode</td><td>Back to the menu. The legs finish their move first.</td></tr>
+          <tr><td><kbd>x</kbd></td><td>In a mode</td><td>Stops the step pulses at once, prints <em>EMERGENCY STOP</em> and returns to the menu. The platform stays homed. Press <kbd>g</kbd> afterwards to lower it smoothly.</td></tr>
+          <tr><td>Driver power switch</td><td>Hardware</td><td>The real emergency stop. After it, press <kbd>h</kbd> to home again, because the legs may have moved while unpowered.</td></tr>
+        </tbody>
+      </table>
+      <p>If a leg reaches its limit switch while the program is moving it, the program stops everything and prints:</p>
+<pre class="term">!!! HOME SWITCH Y FIRED - motion stopped. The platform must be homed again.</pre>
+      <p>That means the position was lost or a limit was set too low. Press <kbd>h</kbd> to home again. If it repeats, redo the minimums in Setup.</p>
+    </section>
+
+    <!-- 7 -->
+    <section class="g" id="panel">
+      <h2><span class="n">7</span>Using the control panel and visualiser</h2>
+      <ol class="steps">
+        <li><p>Open <a href="control.html">Control panel</a> in Chrome or Edge, close PuTTY, press <em>Connect</em>.</p></li>
+        <li><p>Pick a mode with its button. The panel sends <kbd>q</kbd> first if another mode is running, then the mode key. <em>Go to rest</em> and <em>Re-home</em> are always on screen.</p></li>
+        <li><p>Press <em>Telemetry</em> (or <kbd>v</kbd> at the menu) to stream the platform&rsquo;s heave, pitch and roll. The 3D model and the graphs move with the real legs. Telemetry flows only while a mode is running.</p></li>
+        <li><p><b>Sending keys.</b> Everything the panel sends goes out one character at a time, in order, about 18&nbsp;ms apart, so the board never has to catch a burst. <em>STOP</em> (and <kbd>x</kbd> in a mode) jumps the queue and cancels whatever is waiting. Tick <em>Send my keystrokes</em> to type straight to the platform: the text box is switched off then, a held key is sent once (only the jog keys <kbd>u</kbd> <kbd>j</kbd> <kbd>w</kbd> <kbd>s</kbd> <kbd>d</kbd> <kbd>a</kbd> repeat, at most 8 a second), and a key never also presses whichever button has the focus. The sliders send only their latest position. In Setup the key buttons follow the screen the platform is on.</p></li>
+        <li><p>The <a href="visualiser.html">Visualiser</a> page runs the same waves in the browser without the hardware. Use it to show the audience what the platform is about to do, or to try a sea state before running it.</p></li>
+      </ol>
+    </section>
+
+    <section class="g" id="show">
+      <h2><span class="n">7b</span>Presentation lock and the TV display</h2>
+      <h3>Presentation lock</h3>
+      <p>At the main menu press <kbd>l</kbd> (or the <em>Lock</em> button in the panel). Setup, Manual and re-home are then refused with <em>LOCKED: not available during the presentation</em>, so a stray key cannot change calibration. Heave cycle, circles, waves, MAX, go to rest, <kbd>q</kbd> and <kbd>x</kbd> still work. The menu shows <em>PRESENTATION LOCK ON</em> and the TV display shows a yellow <em>LOCKED</em> tag.</p>
+      <p>To unlock press <kbd>l</kbd> again and type <code>UNLOCK</code> then <kbd>Enter</kbd> (in the panel, use the text box). Anything else stays locked. The lock is not saved, so a power cycle unlocks it.</p>
+      <h3>TV display</h3>
+      <p>In the <a href="control.html">control panel</a> press <em>TV display</em>. It goes full screen with the mode (and sea state in Waves and MAX) in large type, LIVE / HOMED / LOCKED tags, heave, pitch and roll as huge numbers, the live 3D model and a 30 second graph. Warnings such as <em>EMERGENCY STOP</em>, <em>HOME SWITCH fired</em> or <em>Leg difference limit reached</em> show as a red banner for 12 seconds. <kbd>Esc</kbd> closes it. Telemetry must be on (press <em>Telemetry</em> first). Drag the browser window to the TV and then press the button, since full screen opens on the screen the window is on. Only one page can hold the serial port, so use the TV display from the control panel itself rather than another tab.</p>
+    </section>
+
+    <!-- 8 -->
+    <section class="g" id="shutdown">
+      <h2><span class="n">8</span>Shut down</h2>
+      <ol class="steps">
+        <li><p>Press <kbd>q</kbd> until the main menu shows.</p></li>
+        <li><p>Press <kbd>g</kbd> and wait for <em>At rest.</em> The legs are now at their lowest level position, which is the safest place to unpower the platform.</p></li>
+        <li><p>Switch off the three drivers.</p></li>
+        <li><p>Close PuTTY or press <em>Disconnect</em>, then unplug the USB cable.</p></li>
+      </ol>
+    </section>
+
+    <!-- 9 -->
+    <section class="g" id="night">
+      <h2><span class="n">9</span>Run order for the presentation</h2>
+      <p>A suggested order that takes about eight minutes and ends in a safe place. Rehearse it once, end to end, on the actual surface before the audience arrives.</p>
+      <ol class="steps">
+        <li><p>Connect, check the status line says <em>HOMED</em> or home, and that <em>calibration</em> is <em>saved in flash</em>. Show the audience the <a href="visualiser.html">Visualiser</a> while you explain what the platform does.</p></li>
+        <li><p><kbd>4</kbd> Waves. Start with <kbd>1</kbd> (sea state 1), then <kbd>2</kbd>, <kbd>3</kbd>, <kbd>4</kbd>, about a minute each. Press <kbd>r</kbd> for a different random sea.</p></li>
+        <li><p><kbd>q</kbd>, then <kbd>5</kbd> MAX platform. Press <kbd>d</kbd> to show the full-range sweep of heave, pitch and roll.</p></li>
+        <li><p><kbd>q</kbd>, then <kbd>g</kbd>. Finish at rest and switch off driver power.</p></li>
+      </ol>
+      <div class="call"><b class="t">Have a fallback</b>
+        <p>If the new program misbehaves, the single-file test program in <code>firmware/legacy/main_standalone_tests.c</code> was tested on the rig. Swap it in for <code>main.c</code>.</p></div>
+    </section>
+
+    <!-- 10 -->
+    <section class="g" id="fix">
+      <h2><span class="n">10</span>If something goes wrong</h2>
+      <table class="tbl" aria-label="Troubleshooting">
+        <thead><tr><th>What you see</th><th>Likely cause</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td>Blank terminal, or garbled characters</td><td>Wrong COM port, wrong speed, or a charge-only USB cable.</td><td>Check Device Manager for the ST-Link port. Speed 115200, 8 data bits, 1 stop, no parity, no flow control. Try another cable.</td></tr>
+          <tr><td>The panel says the port is busy or will not connect</td><td>PuTTY or another program holds the port.</td><td>Close it, unplug and replug the USB cable, press Connect again. Use Chrome or Edge on a desktop.</td></tr>
+          <tr><td>A switch reads <b>PRESSED</b> when the crank is clear</td><td>Wire broken or on the wrong pin, or the pull-up was lost.</td><td>Check NC wiring and the pin. If the project was regenerated, check the inputs are <code>GPIO_PULLUP</code>.</td></tr>
+          <tr><td><b>HOMING FAILED on X</b></td><td>The switch never changed, or the leg did not move.</td><td>Check the switch wiring and that nothing blocks the crank, then the DIR and STEP wiring. <kbd>r</kbd> retries, <kbd>q</kbd> gives up.</td></tr>
+          <tr><td>A leg homes <b>away</b> from its switch</td><td>Wrong direction.</td><td>Switch off driver power. Swap <code>HOME_DIR_LEGn</code> (0 or 1) for that leg in <code>plat_config.h</code>, or swap the DIR wires.</td></tr>
+          <tr><td><b>HOME SWITCH Y FIRED</b></td><td>A leg touched its switch while moving.</td><td>Press <kbd>h</kbd>. If it repeats, raise that leg&rsquo;s minimum in Setup.</td></tr>
+          <tr><td><em>Leg difference limit reached: a leg is being held back until the others catch up.</em></td><td>The legs differ by more than the limit you set in 4e: one is lagging, or a mode asked for a twist the limit forbids.</td><td>It clears itself. If it never does, press <kbd>q</kbd> and look for a stalled leg or a limit that is set too low (Setup, option 5, <kbd>c</kbd> clears it).</td></tr>
+          <tr><td><em>Input lost - that value was NOT used. Type it again.</em></td><td>A character was dropped on the serial link while you typed a number in Manual, so the number could have changed meaning.</td><td>Type it again. The control panel sends keys slowly enough to avoid this.</td></tr>
+          <tr><td>Red LED&nbsp;7 on a driver blinks</td><td>Following error: the motor could not keep up.</td><td>Lower speed and acceleration in Setup, option <kbd>3</kbd>. Check the load.</td></tr>
+          <tr><td>Motion is jerky and <em>Step clock late</em> climbs</td><td>The control loop was held up.</td><td>It should stay at 0 or very small. If it keeps growing, lower the speed in Setup (option 3) and close other serial programs.</td></tr>
+          <tr><td>The platform tilts the wrong way, or pitch and roll are swapped</td><td>Leg order or crank direction differs from the model.</td><td>Check <a href="measure.html">the Measure page</a>: leg order, crank direction (D) and which way more steps turn the crank (G). In Manual press <kbd>w</kbd>: the front (X) should rise.</td></tr>
+          <tr><td>The web model does not move</td><td>Telemetry is off, or no mode is running.</td><td>Press Telemetry (or <kbd>v</kbd> at the menu) and start a mode.</td></tr>
+          <tr><td>Status says <em>calibration: defaults</em></td><td>Nothing has been saved, or a re-flash cleared it.</td><td>Repeat sections 4b to 4f and press <kbd>s</kbd>.</td></tr>
+          <tr><td><em>Geometry: NOT SET</em></td><td>The real measurements are not in <code>plat_config.h</code> yet.</td><td>Everything still runs safely inside the saved leg limits, but the mm and degree values are estimates. <a href="measure.html">Measure</a>, edit, rebuild and re-flash.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</main>
+
+<script src="assets/sea.js"></script>
+<script>
+  SEA.themeToggle(document.getElementById('theme'));
+  document.getElementById('print').addEventListener('click', () => window.print());
+</script>
+</body>
+</html>

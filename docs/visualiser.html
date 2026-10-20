@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sea Platform visualiser</title>
+<meta name="description" content="Run sea states 1 to 4 on a model of the three-leg platform, or watch the real platform live over USB.">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; }
+  .viz { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 350px; grid-template-rows: minmax(300px, 1fr) 250px; }
+  .stage { position: relative; grid-row: 1; grid-column: 1; min-height: 0; border-right: 1.5px solid var(--ink); }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  #view:active { cursor: grabbing; }
+  .caption { position: absolute; left: 16px; top: 14px; right: 16px; pointer-events: none; }
+  .caption .t { font: 800 clamp(1.3rem, 2.6vw, 2rem)/1.1 var(--font); font-stretch: 122%; letter-spacing: -0.01em; }
+  .caption .s { color: var(--mute); font-weight: 520; margin-top: 0.3rem; max-width: 52ch; }
+  .hint { position: absolute; left: 16px; bottom: 12px; color: var(--mute); font-size: 0.86rem; pointer-events: none; }
+  .legend { position: absolute; right: 14px; bottom: 12px; display: flex; gap: 14px; font-size: 0.88rem; font-weight: 600; pointer-events: none; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .panel { grid-row: 1 / span 2; grid-column: 2; overflow-y: auto; padding: 16px; display: grid; gap: 18px; align-content: start; }
+  .panel h3 { margin-bottom: 0.55rem; }
+  .chartbox { grid-row: 2; grid-column: 1; border-top: 1.5px solid var(--ink); border-right: 1.5px solid var(--ink); min-height: 0; }
+  #chart { width: 100%; height: 100%; display: block; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .legs { display: grid; gap: 8px; }
+  .leg { display: grid; grid-template-columns: 22px 1fr 64px; gap: 8px; align-items: center; font-weight: 650; font-size: 0.92rem; }
+  .bar2 { height: 10px; background: var(--grid); border-radius: 2px; position: relative; overflow: hidden; }
+  .bar2 i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); }
+  .leg:nth-child(1) .bar2 i { background: var(--heave); } .leg:nth-child(2) .bar2 i { background: var(--pitch); } .leg:nth-child(3) .bar2 i { background: var(--roll); }
+  details { border-top: 1.5px solid var(--grid-strong); padding-top: 0.7rem; }
+  summary { cursor: pointer; font-weight: 700; font-stretch: 108%; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 0.8rem; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 0.6rem; }
+  .msg { font-size: 0.9rem; min-height: 1.3em; }
+  .msg.err { color: #b3261e; font-weight: 600; }
+  pre#cfg { background: var(--surface); border: 1px solid var(--grid-strong); padding: 0.7rem; font-size: 0.78rem; overflow: auto; max-height: 190px; margin: 0.6rem 0 0; }
+  .warnbox { border-left: 4px solid var(--warn); padding: 0.3rem 0 0.3rem 0.8rem; font-size: 0.9rem; }
+  @media (max-width: 600px) { .hint { display: none; } }
+  @media (max-width: 900px) {
+    html, body { height: auto; } body { display: block; }
+    .viz { display: block; }
+    .stage { height: 58vh; min-height: 330px; border-right: 0; border-bottom: 1.5px solid var(--ink); }
+    .chartbox { height: 250px; border-right: 0; }
+    .panel { overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 17c4-9 8-9 12 0s8 9 12 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M6 27v-5M16 27v-5M26 27v-5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Sea Platform</a>
+  <nav class="nav" aria-label="Pages">
+    <a href="index.html">Project</a>
+    <a href="measure.html">Measure</a>
+    <a href="guide.html">Run guide</a>
+    <a href="visualiser.html" aria-current="page">Visualiser</a>
+    <a href="control.html">Control panel</a>
+    <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme" title="Light / dark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+</header>
+
+<main class="viz">
+  <section class="stage" aria-label="3D model of the platform">
+    <canvas id="view" aria-label="Platform model. Drag to turn, scroll to zoom." role="img"></canvas>
+    <div class="caption"><div class="t" id="capT">Sea state 3</div><div class="s" id="capS"></div></div>
+    <div class="hint">Drag to turn the view, scroll to zoom</div>
+    <div class="legend"><span><i style="background:var(--heave)"></i>X leg</span><span><i style="background:var(--pitch)"></i>Y leg</span><span><i style="background:var(--roll)"></i>Z leg (front)</span></div>
+  </section>
+
+  <aside class="panel" aria-label="Controls">
+    <div>
+      <h3>Source</h3>
+      <div class="seg" role="group" aria-label="Source">
+        <button type="button" id="srcSim" aria-pressed="true">Simulation</button>
+        <button type="button" id="srcLive" aria-pressed="false">Live platform</button>
+      </div>
+    </div>
+
+    <div id="simBox" style="display:grid;gap:18px">
+      <div>
+        <h3>Sea state</h3>
+        <div class="seg" role="group" aria-label="Sea state" id="ssSeg">
+          <button type="button" data-ss="1" aria-pressed="false">1</button>
+          <button type="button" data-ss="2" aria-pressed="false">2</button>
+          <button type="button" data-ss="3" aria-pressed="true">3</button>
+          <button type="button" data-ss="4" aria-pressed="false">4</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn small ghost" type="button" id="maxBtn" aria-pressed="false">MAX platform</button>
+        <button class="btn small ghost" type="button" id="sweepBtn" aria-pressed="false" disabled>Full-range sweep</button>
+        <button class="btn small ghost" type="button" id="pauseBtn" aria-pressed="false">Pause</button>
+        <button class="btn small ghost" type="button" id="seedBtn">New sea</button>
+      </div>
+      <label class="field"><span class="row" style="justify-content:space-between"><span>Time speed</span><b id="tsOut"></b></span>
+        <input type="range" id="tsIn" min="0.4" max="2.5" step="0.05" value="1"></label>
+      <label class="field"><span class="row" style="justify-content:space-between"><span>Wave size trim</span><b id="trOut"></b></span>
+        <input type="range" id="trIn" min="0.25" max="1.3" step="0.05" value="1"></label>
+    </div>
+
+    <div id="liveBox" style="display:none;gap:12px">
+      <p class="mute" style="margin:0">Plug in the Nucleo, then connect. The platform must be running firmware with telemetry on (press <b>Telemetry</b> if nothing moves).</p>
+      <div class="row">
+        <button class="btn small" type="button" id="connBtn">Connect</button>
+        <button class="btn small ghost" type="button" id="teleBtn" disabled>Telemetry</button>
+      </div>
+      <div class="status"><span class="dot" id="liveDot"></span><span id="liveTxt">Not connected</span></div>
+      <p class="msg" id="liveMsg"></p>
+    </div>
+
+    <div>
+      <h3>Leg positions</h3>
+      <div class="legs" id="legs"></div>
+      <p class="mute" style="font-size:0.88rem;margin:0.6rem 0 0" id="legNote"></p>
+    </div>
+
+    <details id="geomBox">
+      <summary>Geometry and limits</summary>
+      <p class="warnbox" id="geomWarn">These are placeholder dimensions until you enter the measured ones. Angles and millimetres here are estimates; the firmware always keeps the legs inside their limits.</p>
+      <div class="grid2">
+        <label class="field">Crank length r (mm)<input type="number" id="g_r" step="0.5"></label>
+        <label class="field">Link length L (mm)<input type="number" id="g_L" step="0.5"></label>
+        <label class="field">Base radius (mm)<input type="number" id="g_Rb" step="0.5"></label>
+        <label class="field">Platform radius (mm)<input type="number" id="g_Rp" step="0.5"></label>
+        <label class="field">Crank angle at minimum (deg)<input type="number" id="g_th" step="1"></label>
+        <label class="field">Crank points (deg from outward)<input type="number" id="g_az" step="1"></label>
+        <label class="field">More steps<select id="g_sense"><option value="1">raises the crank pin</option><option value="-1">lowers the crank pin</option></select></label>
+        <label class="field">Speed / acceleration<span class="row"><input type="number" id="c_v" step="50" style="width:48%"><input type="number" id="c_a" step="50" style="width:48%"></span></label>
+      </div>
+      <div class="grid3">
+        <label class="field">Min X<input type="number" id="c_min0"></label><label class="field">Min Y<input type="number" id="c_min1"></label><label class="field">Min Z<input type="number" id="c_min2"></label>
+        <label class="field">Max X<input type="number" id="c_max0"></label><label class="field">Max Y<input type="number" id="c_max1"></label><label class="field">Max Z<input type="number" id="c_max2"></label>
+      </div>
+      <p class="mute" style="font-size:0.86rem;margin:0.7rem 0 0.3rem">Limits found by hand in Setup 4 and 5 (leave 0 for none). The waves and the workspace shrink to fit them, just as on the platform.</p>
+      <div class="grid2">
+        <label class="field">Largest pitch + / − (deg)<span class="row"><input type="number" id="l_pp" min="0" step="0.25" style="width:48%"><input type="number" id="l_pn" min="0" step="0.25" style="width:48%"></span></label>
+        <label class="field">Largest roll + / − (deg)<span class="row"><input type="number" id="l_rp" min="0" step="0.25" style="width:48%"><input type="number" id="l_rn" min="0" step="0.25" style="width:48%"></span></label>
+        <label class="field">Largest leg difference (steps)<input type="number" id="l_diff" min="0" step="50"></label>
+      </div>
+      <div class="row" style="margin-top:0.8rem">
+        <button class="btn small" type="button" id="applyGeom">Apply</button>
+        <button class="btn small ghost" type="button" id="resetGeom">Reset</button>
+        <button class="btn small ghost" type="button" id="copyCfg">Show as plat_config.h</button>
+      </div>
+      <p class="msg" id="geomMsg"></p>
+      <pre id="cfg" hidden></pre>
+    </details>
+  </aside>
+
+  <section class="chartbox"><canvas id="chart" aria-label="Heave, pitch and roll against time" role="img"></canvas></section>
+</main>
+
+<script src="assets/sea.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  SEA.themeToggle($('theme'));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- settings, remembered in this browser only ---- */
+  const KEY = 'sea-setup-v1';
+  let geom = SEA.defaultGeom(), cal = SEA.defaultCal();
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.geom && s.cal) { geom = s.geom; cal = s.cal; } } catch (e) {}
+  let kin, mapper, view, chart;
+  let source = 'sim', paused = reduced, maxMode = false;
+  let pose = null, steps = [0, 0, 0], liveSteps = null;
+  const state = { ss: 3, tscale: 1, trim: 1 };
+
+  function build() {
+    kin = new SEA.Kin(geom, cal);
+    if (!kin.ok) return false;
+    mapper = new SEA.WaveMapper({ kin, ss: state.ss, maxMode, tscale: state.tscale, trim: state.trim });
+    if (!view) view = new SEA.PlatformView($('view'), kin); else view.kin = kin;
+    pose = { h: kin.caps.heaveMid, p: 0, r: 0 };
+    steps = kin.poseToSteps(pose);
+    return true;
+  }
+  const c = () => kin.caps;
+  function makeChart() {
+    const k = kin.caps, P = SEA.palette(), f = maxMode ? 1 : 0.5;     /* plotted range: half the workspace, all of it in MAX */
+    const series = [
+      { label: 'Heave (from mid-stroke)', unit: 'mm', color: P.heave, range: f * k.heaveRange / 2, decimals: 1 },
+      { label: 'Pitch', unit: 'deg', color: P.pitch, range: f * k.pitchCap, decimals: 2 },
+      { label: 'Roll', unit: 'deg', color: P.roll, range: f * k.rollCap, decimals: 2 }];
+    if (!chart) chart = new SEA.StripChart($('chart'), series, { seconds: 30, hz: 20 });
+    else { chart.s.forEach((s, i) => { s.range = series[i].range; s.color = series[i].color; }); }
+  }
+  if (!build()) { geom = SEA.defaultGeom(); cal = SEA.defaultCal(); build(); }
+  makeChart();
+  document.addEventListener('sea-theme', () => { makeChart(); chart.s.forEach((s, i) => (s.color = SEA.palette()[['heave', 'pitch', 'roll'][i]])); });
+
+  /* ---- legs panel ---- */
+  const legsEl = $('legs');
+  legsEl.innerHTML = ['X', 'Y', 'Z'].map((n) => `<div class="leg"><span>${n}</span><div class="bar2"><i></i></div><span class="v" style="text-align:right">0</span></div>`).join('');
+  function drawLegs(s) {
+    legsEl.querySelectorAll('.leg').forEach((el, i) => {
+      const f = Math.max(0, Math.min(1, (s[i] - cal.min[i]) / (cal.max[i] - cal.min[i])));
+      el.querySelector('i').style.width = (f * 100).toFixed(1) + '%';
+      el.querySelector('.v').textContent = Math.round(s[i]);
+    });
+  }
+
+  /* ---- simulation controls ---- */
+  function caption() {
+    if (source === 'live') { $('capT').textContent = 'Live platform'; $('capS').textContent = 'Pose and leg positions as reported by the firmware.'; return; }
+    $('capT').textContent = mapper.label + (maxMode ? ' · MAX' : '');
+    $('capS').textContent = mapper.sweep ? 'Each axis sweeps through its full range in turn: heave, pitch, then roll.'
+      : 'Waves at ' + Math.round(mapper.sigma * mapper.trim * 100) + '% of the platform’s range, set by the ' + mapper.limit + '. Time runs at ×' + mapper.ts.toFixed(2) + (mapper.ts < 0.99 ? ' (slowed so the motors can follow).' : '.');
+    $('tsOut').textContent = '×' + state.tscale.toFixed(2); $('trOut').textContent = Math.round(state.trim * 100) + '%';
+  }
+  document.querySelectorAll('#ssSeg button').forEach((b) => b.addEventListener('click', () => setSS(+b.dataset.ss)));
+  function setSS(n) {
+    state.ss = n; mapper.setSeaState(n); chart.clear();
+    document.querySelectorAll('#ssSeg button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.ss === n)));
+    caption();
+  }
+  function setMax(on) {
+    maxMode = on; $('maxBtn').setAttribute('aria-pressed', String(on)); $('sweepBtn').disabled = !on;
+    if (!on) { $('sweepBtn').setAttribute('aria-pressed', 'false'); }
+    mapper = new SEA.WaveMapper({ kin, ss: on ? Math.max(state.ss, 4) : state.ss, maxMode: on, seed: mapper.seed, tscale: state.tscale, trim: state.trim });
+    if (on) { state.ss = mapper.ss; document.querySelectorAll('#ssSeg button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.ss === state.ss))); }
+    makeChart(); chart.clear(); caption();
+  }
+  $('maxBtn').addEventListener('click', () => setMax(!maxMode));
+  $('sweepBtn').addEventListener('click', () => { const on = !mapper.sweep; mapper.setSweep(on); $('sweepBtn').setAttribute('aria-pressed', String(on)); chart.clear(); caption(); });
+  $('pauseBtn').addEventListener('click', () => setPause(!paused));
+  function setPause(p) { paused = p; $('pauseBtn').setAttribute('aria-pressed', String(p)); $('pauseBtn').textContent = p ? 'Resume' : 'Pause'; }
+  $('seedBtn').addEventListener('click', () => { mapper.newSeed(); chart.clear(); caption(); });
+  $('tsIn').addEventListener('input', (e) => { state.tscale = +e.target.value; mapper.setTimeScale(state.tscale); caption(); });
+  $('trIn').addEventListener('input', (e) => { state.trim = +e.target.value; mapper.trim = state.trim; caption(); });
+  if (reduced) setPause(true);
+  window.addEventListener('keydown', (e) => {
+    if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) || e.ctrlKey || e.metaKey) return;
+    if (source !== 'sim') return;
+    if (e.key >= '1' && e.key <= '4') setSS(+e.key);
+    else if (e.key === ' ') { e.preventDefault(); setPause(!paused); }
+    else if (e.key === 'm' || e.key === 'M') setMax(!maxMode);
+  });
+
+  /* ---- live platform ---- */
+  const ser = new SEA.Serial();
+  let lastTele = 0;
+  function setSource(s) {
+    source = s;
+    $('srcSim').setAttribute('aria-pressed', String(s === 'sim')); $('srcLive').setAttribute('aria-pressed', String(s === 'live'));
+    $('simBox').style.display = s === 'sim' ? 'grid' : 'none'; $('liveBox').style.display = s === 'live' ? 'grid' : 'none';
+    chart.clear(); caption();
+    $('legNote').textContent = s === 'live' ? 'Steps counted by the firmware (0 = home switch).' : 'Where the model sends each leg (0 = home switch).';
+    if (s === 'live' && !SEA.Serial.supported()) { $('liveMsg').textContent = 'Web Serial needs desktop Chrome or Edge. Use the terminal program (PuTTY) instead, or open this page in one of those browsers.'; $('liveMsg').className = 'msg err'; $('connBtn').disabled = true; }
+  }
+  $('srcSim').addEventListener('click', () => setSource('sim'));
+  $('srcLive').addEventListener('click', () => setSource('live'));
+  ser.onState = (on) => {
+    $('connBtn').textContent = on ? 'Disconnect' : 'Connect'; $('teleBtn').disabled = !on;
+    $('liveDot').className = 'dot' + (on ? ' warn' : ''); $('liveTxt').textContent = on ? 'Connected, waiting for telemetry' : 'Not connected';
+  };
+  ser.onTelemetry = (t) => {
+    lastTele = performance.now();
+    liveSteps = t.steps;
+    if (!t.fkFailed) { pose = { h: t.h, p: t.p, r: t.r }; }
+    $('liveDot').className = 'dot on';
+    $('liveTxt').textContent = SEA.MODE_NAMES[t.mode] + (t.homed ? ', homed' : ', not homed');
+    if (source === 'live') chart.push([pose.h - kin.caps.heaveMid, pose.p, pose.r]);
+  };
+  ser.onLine = (l, err) => { if (err) { $('liveMsg').textContent = l; $('liveMsg').className = 'msg err'; } };
+  $('connBtn').addEventListener('click', async () => {
+    try { if (ser.open) await ser.disconnect(); else { await ser.connect(115200); $('liveMsg').textContent = ''; } }
+    catch (e) { $('liveMsg').textContent = e.name === 'NotFoundError' ? 'No port chosen.' : 'Could not open the port: ' + e.message + ' (close PuTTY first).'; $('liveMsg').className = 'msg err'; }
+  });
+  $('teleBtn').addEventListener('click', () => ser.send('v'));
+
+  /* ---- geometry form ---- */
+  function fillForm() {
+    $('g_r').value = geom.r; $('g_L').value = geom.L; $('g_Rb').value = geom.Rb; $('g_Rp').value = geom.Rp;
+    $('g_th').value = geom.thetaMinDeg; $('g_az').value = geom.crankAzDeg; $('g_sense').value = String(geom.sense);
+    $('c_v').value = cal.vmax; $('c_a').value = cal.amax;
+    for (let i = 0; i < 3; i++) { $('c_min' + i).value = cal.min[i]; $('c_max' + i).value = cal.max[i]; }
+    $('l_pp').value = cal.pitchPos || 0; $('l_pn').value = cal.pitchNeg || 0; $('l_rp').value = cal.rollPos || 0; $('l_rn').value = cal.rollNeg || 0; $('l_diff').value = cal.maxDiff || 0;
+    $('geomWarn').style.display = geom.configured ? 'none' : '';
+  }
+  fillForm();
+  $('applyGeom').addEventListener('click', () => {
+    const g = { r: +$('g_r').value, L: +$('g_L').value, Rb: +$('g_Rb').value, Rp: +$('g_Rp').value, thetaMinDeg: +$('g_th').value,
+      crankAzDeg: +$('g_az').value, sense: +$('g_sense').value, legAzDeg: geom.legAzDeg.slice(), configured: true };
+    const cl = { min: [0, 1, 2].map((i) => +$('c_min' + i).value), max: [0, 1, 2].map((i) => +$('c_max' + i).value), vmax: +$('c_v').value, amax: +$('c_a').value,
+      pitchPos: Math.max(0, +$('l_pp').value || 0), pitchNeg: Math.max(0, +$('l_pn').value || 0), rollPos: Math.max(0, +$('l_rp').value || 0), rollNeg: Math.max(0, +$('l_rn').value || 0),
+      maxDiff: Math.max(0, Math.round(+$('l_diff').value || 0)) };
+    const bad = cl.min.some((v, i) => !(cl.max[i] - v >= 500));
+    if (bad) { $('geomMsg').textContent = 'Each maximum must be at least 500 steps above its minimum.'; $('geomMsg').className = 'msg err'; return; }
+    const old = [geom, cal]; geom = g; cal = cl;
+    if (!build()) { [geom, cal] = old; build(); $('geomMsg').textContent = 'That geometry cannot be built: the link is too short or too long for the crank and radii, so a leg has no solution. Check the numbers.'; $('geomMsg').className = 'msg err'; return; }
+    try { localStorage.setItem(KEY, JSON.stringify({ geom, cal })); } catch (e) {}
+    makeChart(); chart.clear(); caption(); fillForm();
+    $('geomMsg').className = 'msg'; $('geomMsg').textContent = 'Applied. Workspace: heave ' + kin.caps.heaveRange.toFixed(0) + ' mm, pitch ±' + kin.caps.pitchCap.toFixed(1) + '°, roll ±' + kin.caps.rollCap.toFixed(1) + '°.';
+  });
+  $('resetGeom').addEventListener('click', () => { geom = SEA.defaultGeom(); cal = SEA.defaultCal(); try { localStorage.removeItem(KEY); } catch (e) {} build(); makeChart(); chart.clear(); fillForm(); caption(); $('geomMsg').textContent = 'Back to the placeholder values.'; });
+  $('copyCfg').addEventListener('click', () => {
+    const f = (x) => (Number.isInteger(x) ? x.toFixed(1) : String(x)) + 'f';
+    const t = `#define GEOMETRY_CONFIGURED  1\n#define GEOM_CRANK_R         ${f(geom.r)}\n#define GEOM_LINK_L          ${f(geom.L)}\n#define GEOM_BASE_R          ${f(geom.Rb)}\n#define GEOM_PLATFORM_R      ${f(geom.Rp)}\n#define GEOM_THETA_MIN_DEG   ${f(geom.thetaMinDeg)}\n#define GEOM_CRANK_AZ_DEG    ${f(geom.crankAzDeg)}\n#define GEOM_SENSE           ${geom.sense}\n#define GEOM_AZ_LEG0         ${f(geom.legAzDeg[0])}\n#define GEOM_AZ_LEG1         ${f(geom.legAzDeg[1])}\n#define GEOM_AZ_LEG2         ${f(geom.legAzDeg[2])}\n\n/* optional: calibration defaults (Setup mode can also save them in flash) */\n#define DEF_MIN_LEG0 ${cal.min[0]}\n#define DEF_MIN_LEG1 ${cal.min[1]}\n#define DEF_MIN_LEG2 ${cal.min[2]}\n#define DEF_MAX_LEG0 ${cal.max[0]}\n#define DEF_MAX_LEG1 ${cal.max[1]}\n#define DEF_MAX_LEG2 ${cal.max[2]}`;
+    $('cfg').textContent = t; $('cfg').hidden = false;
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { $('geomMsg').className = 'msg'; $('geomMsg').textContent = 'Copied. Paste over the matching lines in plat_config.h.'; }, () => {});
+  });
+
+  /* ---- animation loop ---- */
+  let last = performance.now(), acc = 0, chAcc = 0;
+  function frame(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (source === 'sim') {
+      if (!paused) {
+        acc += dt;
+        while (acc >= 0.01) {
+          acc -= 0.01; const r = mapper.step(0.01);
+          if (r.keep >= 0) { pose = r.pose; steps = r.steps; }
+          chAcc += 0.01;
+          if (chAcc >= 0.05) { chAcc -= 0.05; chart.push([pose.h - kin.caps.heaveMid, pose.p, pose.r]); }
+        }
+        caption();
+      }
+      drawLegs(steps);
+    } else if (liveSteps) drawLegs(liveSteps);
+    view.setPose(pose); view.draw(); chart.draw();
+    requestAnimationFrame(frame);
+  }
+  caption(); drawLegs(steps);
+  /* fill the chart so the first screen is not empty */
+  if (!paused) { for (let i = 0; i < 600; i++) { const r = mapper.step(0.05); if (i % 1 === 0) chart.push([r.pose.h - kin.caps.heaveMid, r.pose.p, r.pose.r]); } }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

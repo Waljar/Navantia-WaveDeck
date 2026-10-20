@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What to measure on the platform</title>
+<meta name="description" content="Seven measurements that turn the platform's millimetres and degrees from estimates into real numbers, with drawings that redraw from your values.">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: clamp(1.4rem, 3vw, 3rem); padding: clamp(1.6rem, 3vw, 2.6rem) 0 3rem; align-items: start; }
+  h1 { font-size: clamp(1.9rem, 4vw, 3rem); margin-bottom: 0.8rem; max-width: 18ch; }
+  .fig { border: 1.5px solid var(--ink); background: var(--surface); margin: 0 0 1.6rem; }
+  .fig svg { display: block; width: 100%; height: auto; }
+  .fig figcaption { border-top: 1.5px solid var(--ink); padding: 0.6rem 0.9rem; font-size: 0.92rem; background: var(--paper); }
+  .badge { display: inline-grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 50%; background: var(--ink); color: var(--on-ink); font: 800 0.9rem/1 var(--font); flex: none; }
+  .m { width: 100%; border-collapse: collapse; margin-bottom: 1.6rem; }
+  .m td, .m th { padding: 0.9rem 0.8rem 0.9rem 0; vertical-align: top; }
+  .m td:first-child { width: 2.6rem; }
+  .m h3 { margin-bottom: 0.25rem; }
+  .m p { margin: 0 0 0.4rem; font-size: 0.95rem; max-width: 56ch; }
+  .val { display: flex; gap: 0.4rem; align-items: center; width: 11rem; }
+  .val input, .val select { min-height: 40px; }
+  .val span { color: var(--mute); font-size: 0.9rem; }
+  .side { position: sticky; top: 76px; display: grid; gap: 1rem; }
+  #pv { width: 100%; height: 280px; display: block; border: 1.5px solid var(--ink); cursor: grab; touch-action: none; }
+  .stat { font-size: 0.95rem; border-left: 4px solid var(--grid-strong); padding-left: 0.8rem; min-height: 3.2em; }
+  .stat.ok { border-color: var(--ok); } .stat.bad { border-color: #b3261e; color: #b3261e; font-weight: 600; }
+  pre#cfg { margin: 0; background: var(--surface); border: 1px solid var(--grid-strong); padding: 0.7rem; font-size: 0.78rem; overflow: auto; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .or { color: var(--mute); font-size: 0.85rem; }
+  .step0 { border: 1.5px solid var(--ink); padding: 0.9rem 1.1rem; margin-bottom: 1.6rem; background: var(--surface); }
+  .step0 h3 { margin-bottom: 0.4rem; } .step0 ol { margin: 0.3rem 0 0; padding-left: 1.2rem; } .step0 li { margin-bottom: 0.25rem; }
+  .legs3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  textarea { font: 500 1rem var(--font); width: 100%; min-height: 84px; background: var(--surface); color: var(--ink); border: 1.5px solid var(--grid-strong); border-radius: 3px; padding: 0.5rem; }
+  @media (max-width: 980px) { .page { grid-template-columns: minmax(0, 1fr); } .side { position: static; order: -1; } }
+  @media print {
+    .bar, .side .btn, .noprint, #pv { display: none !important; }
+    .page { grid-template-columns: 1fr; padding: 0; } .side { position: static; }
+    body { background: #fff; --paper: #fff; --surface: #fff; font-size: 11pt; }
+    .oneq { break-inside: avoid; } h3 { break-after: avoid; }
+    .fig { break-inside: avoid; display: inline-block; width: 49%; vertical-align: top; margin: 0 0.5% 1rem 0; box-sizing: border-box; } .fig figcaption { font-size: 8pt; padding: 0.4rem 0.6rem; } .m tr { break-inside: avoid; } .m td, .m th { padding: 0.5rem 0.6rem 0.5rem 0; } .step0 { padding: 0.6rem 0.9rem; margin-bottom: 1rem; } .lead { font-size: 10.5pt; }
+    .val input, .val select { border: 0; border-bottom: 1.5px solid #000; border-radius: 0; background: transparent; appearance: none; }
+    a { text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 17c4-9 8-9 12 0s8 9 12 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M6 27v-5M16 27v-5M26 27v-5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Sea Platform</a>
+  <nav class="nav" aria-label="Pages">
+    <a href="index.html">Project</a><a href="measure.html" aria-current="page">Measure</a><a href="guide.html">Run guide</a><a href="visualiser.html">Visualiser</a><a href="control.html">Control panel</a>
+    <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme" title="Light / dark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+</header>
+
+<main class="wrap page">
+  <div>
+    <h1>What to measure on the platform</h1>
+    <p class="lead">Seven numbers turn the millimetres and degrees from estimates into real values. It takes about fifteen minutes with a ruler, a phone angle app and the platform at its lowest level position. The drawings redraw from what you type, so you can check them against the real thing.</p>
+
+    <div class="step0">
+      <h3>Before you measure: put the platform at its level minimum</h3>
+      <ol>
+        <li>Run the program, press <kbd>1</kbd> for Setup and let it home.</li>
+        <li>Press <kbd>1</kbd> again, jog each leg until the platform is level and as low as it goes, then press <kbd>n</kbd> to mark all three.</li>
+        <li>Stay there and measure. Do not touch the legs while measuring. <a href="guide.html#setup">Details in the run guide.</a></li>
+      </ol>
+    </div>
+
+    <figure class="fig">
+      <svg id="side" viewBox="0 0 560 360" role="img" aria-label="Side view of one leg: crank, link and platform at the level minimum"></svg>
+      <figcaption><b>Side view of one leg, platform at its level minimum.</b> Drawn from your numbers. The dotted line is the horizontal through the motor shaft.</figcaption>
+    </figure>
+
+    <figure class="fig">
+      <svg id="top" viewBox="0 0 560 410" role="img" aria-label="Top view: motor shafts on the base circle, link joints on the platform circle, leg order and crank direction"></svg>
+      <figcaption><b>Top view, looking down, front at the top.</b> Solid circle: the platform, with a ring at each link&rsquo;s top joint. Dashed circle: the motor shafts (hidden when the two radii match). Coloured arrows: where each crank points when it is horizontal. The firmware is set for leg X at the front, Z at the back left and Y at the back right.</figcaption>
+    </figure>
+
+    <table class="m" aria-label="Measurements">
+      <tbody>
+        <tr><td><span class="badge">A</span></td><td><h3>Crank length r</h3><p>From the centre of the motor shaft to the centre of the pin joint at the end of the crank arm. Use calipers or a steel rule; half a millimetre is plenty.</p></td>
+          <td><div class="val"><input type="number" id="r" step="0.5" min="1" aria-label="Crank length in millimetres"><span>mm</span></div></td></tr>
+        <tr><td><span class="badge">B</span></td><td><h3>Link length L</h3><p>From the centre of one ball joint to the centre of the other, along the link. Not the length of the rod itself.</p></td>
+          <td><div class="val"><input type="number" id="L" step="0.5" min="1" aria-label="Link length in millimetres"><span>mm</span></div></td></tr>
+        <tr><td><span class="badge">C</span></td><td><h3>Crank angle at the minimum &theta;min</h3><p>With the platform at its level minimum, the angle of the crank arm (shaft to pin) against the horizontal. Use a phone angle app held along the arm. <b>Negative if the arm points below the horizontal</b>, positive if above. Check the other two legs read the same.</p></td>
+          <td><div class="val"><input type="number" id="th" step="1" aria-label="Crank angle at the minimum in degrees"><span>deg</span></div></td></tr>
+        <tr><td><span class="badge">D</span></td><td><h3>Which way the crank points</h3><p>Seen from above with the crank arm horizontal: pointing away from the centre line (outward), toward it (inward), or sideways. The top view shows the arrow.</p></td>
+          <td><div class="val"><select id="az" aria-label="Crank direction"><option value="0">Outward</option><option value="180">Inward</option><option value="90">Sideways, anticlockwise from above</option><option value="-90">Sideways, clockwise from above</option></select></div></td></tr>
+        <tr><td><span class="badge">E</span></td><td><h3>Base radius</h3><p>Horizontal distance from the middle of the platform to each motor shaft. Easier: measure the straight distance between two motor shafts and the radius is that divided by 1.732 (equal triangle).</p>
+            <div class="or">Shaft to shaft: <input type="number" id="sb" step="0.5" min="1" style="width:6rem;min-height:34px" aria-label="Distance between two motor shafts in millimetres"> mm</div></td>
+          <td><div class="val"><input type="number" id="rb" step="0.5" min="1" aria-label="Base radius in millimetres"><span>mm</span></div></td></tr>
+        <tr><td><span class="badge">F</span></td><td><h3>Platform radius</h3><p>Horizontal distance from the middle of the platform to each link&rsquo;s top joint, in the same way. Or measure between two top joints and divide by 1.732.</p>
+            <div class="or">Joint to joint: <input type="number" id="sp" step="0.5" min="1" style="width:6rem;min-height:34px" aria-label="Distance between two top joints in millimetres"> mm</div></td>
+          <td><div class="val"><input type="number" id="rp" step="0.5" min="1" aria-label="Platform radius in millimetres"><span>mm</span></div></td></tr>
+        <tr><td><span class="badge">G</span></td><td><h3>Which way more steps turn the crank</h3><p>In Setup (minimums) select a leg and press <kbd>d</kbd> once: the step count goes up. Watch the crank pin. Does it rise or fall?</p></td>
+          <td><div class="val"><select id="sense" aria-label="Effect of more steps"><option value="1">Pin rises</option><option value="-1">Pin falls</option></select></div></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-bottom:0.6rem">Check the leg order</h3>
+    <p>Stand where the front of the platform is. Which driver is wired to which leg? The firmware is set for the front leg X, the back-left leg Z and the back-right leg Y. Angles run anticlockwise from the front, seen from above. If your legs are wired differently, change these.</p>
+    <div class="legs3" style="max-width:420px;margin-bottom:1.6rem">
+      <label class="field">X leg at (deg)<input type="number" id="ax" step="1"></label>
+      <label class="field">Y leg at (deg)<input type="number" id="ay" step="1"></label>
+      <label class="field">Z leg at (deg)<input type="number" id="az2" step="1"></label>
+    </div>
+
+    <div class="oneq">
+    <h3 style="margin-bottom:0.6rem">One question, not a measurement</h3>
+    <p>What stops the platform sliding sideways or turning? A centre pole or guide, a pivot, or only the three links? The model assumes the middle of the platform stays on the vertical axis. Write the answer here and bring it with the numbers.</p>
+    <textarea class="noprint-border" aria-label="How the platform is constrained sideways" placeholder="e.g. centre pole with a ball joint at the base"></textarea>
+    </div>
+  </div>
+
+  <aside class="side" aria-label="Preview and actions">
+    <canvas id="pv" role="img" aria-label="Model of the platform from your numbers. Drag to turn it."></canvas>
+    <div class="stat" id="stat" aria-live="polite"></div>
+    <div class="row noprint">
+      <button class="btn small" type="button" id="use">Use in the visualiser</button>
+      <button class="btn small ghost" type="button" id="cfgBtn">Show plat_config.h lines</button>
+      <button class="btn small ghost" type="button" id="print">Print this sheet</button>
+    </div>
+    <p class="msg mute" id="msg" style="font-size:0.9rem;margin:0"></p>
+    <pre id="cfg" hidden></pre>
+  </aside>
+</main>
+
+<script src="assets/sea.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  SEA.themeToggle($('theme'));
+  const KEY = 'sea-setup-v1';
+  let saved = null; try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+  const geom0 = (saved && saved.geom) || SEA.defaultGeom();
+  const SQ3 = Math.sqrt(3);
+
+  /* ---- form <-> geometry ---- */
+  function fill(g) {
+    $('r').value = g.r; $('L').value = g.L; $('th').value = g.thetaMinDeg; $('az').value = String(g.crankAzDeg); $('sense').value = String(g.sense);
+    $('rb').value = g.Rb; $('rp').value = g.Rp; $('sb').value = +(g.Rb * SQ3).toFixed(1); $('sp').value = +(g.Rp * SQ3).toFixed(1);
+    $('ax').value = g.legAzDeg[0]; $('ay').value = g.legAzDeg[1]; $('az2').value = g.legAzDeg[2];
+  }
+  const num = (id, d) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : d; };
+  function read() {
+    return { r: num('r', 60), L: num('L', 160), Rb: num('rb', 150), Rp: num('rp', 150), thetaMinDeg: num('th', -70), crankAzDeg: +$('az').value,
+             sense: +$('sense').value, legAzDeg: [num('ax', 120), num('ay', 240), num('az2', 0)], configured: true };
+  }
+  fill(geom0);
+  $('sb').addEventListener('input', () => { $('rb').value = +(num('sb', 0) / SQ3).toFixed(1); update(); });
+  $('rb').addEventListener('input', () => { $('sb').value = +(num('rb', 0) * SQ3).toFixed(1); });
+  $('sp').addEventListener('input', () => { $('rp').value = +(num('sp', 0) / SQ3).toFixed(1); update(); });
+  $('rp').addEventListener('input', () => { $('sp').value = +(num('rp', 0) * SQ3).toFixed(1); });
+
+  /* ---- drawings ---- */
+  const NS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs, parent, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text !== undefined) e.textContent = text; if (parent) parent.appendChild(e); return e; };
+  const FONT = 'font-family="Archivo Variable, system-ui, sans-serif"';
+  let SC = 1;                                  /* drawing scale: text and badges grow when the drawing is shown small (phones) */
+  const setU = (svg) => { const w = svg.getBoundingClientRect().width || 560; SC = Math.min(1.75, Math.max(1, 560 / w * 0.9)); };
+  function badge(svg, x, y, letter, fill) {
+    svgEl('circle', { cx: x, cy: y, r: 11 * SC, fill: fill || 'var(--ink)' }, svg);
+    svgEl('text', { x, y: y + 4.5 * SC, 'text-anchor': 'middle', 'font-size': 13 * SC, 'font-weight': 800, fill: 'var(--on-ink)', style: 'font-family:var(--font)' }, svg, letter);
+  }
+  function label(svg, x, y, text, opts) {
+    const o = Object.assign({ x, y, 'font-size': 13, 'font-weight': 600, fill: 'var(--ink)', style: 'font-family:var(--font)' }, opts || {});
+    o['font-size'] = o['font-size'] * SC;
+    o['paint-order'] = 'stroke'; o.stroke = 'var(--paper)'; o['stroke-width'] = 4; o['stroke-linejoin'] = 'round';
+    return svgEl('text', o, svg, text);
+  }
+  const fmt = (v) => (Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1));
+
+  function drawSide(kin, g) {
+    const svg = $('side'); svg.innerHTML = ''; setU(svg);
+    const sol = kin.solve({ h: 0, p: 0, r: 0 }), i = 2, Bx = kin.B[i][0], By = kin.B[i][1], U = kin.U[i];
+    const toPlane = (p) => [(p[0] - Bx) * U[0] + (p[1] - By) * U[1], p[2]];
+    const C = toPlane(sol.C[i]), P = toPlane(sol.P[i]);
+    const halfPlat = Math.max(30, Math.min(g.Rp, 140) * 0.55);
+    const pts = [[0, 0], C, P, [P[0] - halfPlat, P[1]], [P[0] + halfPlat, P[1]], [g.r * 1.45, 0], [-g.r * 0.3, 0]];
+    const xs = pts.map((q) => q[0]), zs = pts.map((q) => q[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs, -g.r * 0.2), z1 = Math.max(...zs);
+    const W = 560, H = 360, m = 54, k = Math.min((W - 2 * m) / (x1 - x0), (H - 2 * m) / (z1 - z0));
+    const ox = (W - (x1 - x0) * k) / 2 - x0 * k, oz = H - (H - (z1 - z0) * k) / 2 + z0 * k;
+    const X = (s) => ox + s * k, Y = (z) => oz - z * k;
+    /* ground reference and horizontal through the shaft */
+    svgEl('line', { x1: X(-g.r * 0.3), y1: Y(0), x2: X(g.r * 1.45), y2: Y(0), stroke: 'var(--mute)', 'stroke-width': 1.5, 'stroke-dasharray': '2 5' }, svg);
+    /* platform (level) */
+    svgEl('line', { x1: X(P[0] - halfPlat), y1: Y(P[1]), x2: X(P[0] + halfPlat), y2: Y(P[1]), stroke: 'var(--ink)', 'stroke-width': 7, 'stroke-linecap': 'round' }, svg);
+    label(svg, X(P[0] + halfPlat) + 8, Y(P[1]) + 4, 'platform, level', { fill: 'var(--mute)', 'font-size': 12 });
+    /* link and crank */
+    svgEl('line', { x1: X(C[0]), y1: Y(C[1]), x2: X(P[0]), y2: Y(P[1]), stroke: 'var(--ink)', 'stroke-width': 3 }, svg);
+    svgEl('line', { x1: X(0), y1: Y(0), x2: X(C[0]), y2: Y(C[1]), stroke: 'var(--heave)', 'stroke-width': 7, 'stroke-linecap': 'round' }, svg);
+    /* angle arc from the horizontal to the crank */
+    const th = Math.atan2(C[1], C[0]), ar = Math.min(54, g.r * k * 0.6);
+    const a0 = [X(0) + ar, Y(0)], a1 = [X(0) + ar * Math.cos(th), Y(0) - ar * Math.sin(th)];
+    svgEl('path', { d: `M${a0[0]} ${a0[1]} A${ar} ${ar} 0 0 ${th > 0 ? 0 : 1} ${a1[0]} ${a1[1]}`, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 2 }, svg);
+    const mid = th / 2; badge(svg, X(0) + (ar + 22 * SC) * Math.cos(mid), Y(0) - (ar + 22 * SC) * Math.sin(mid), 'C');
+    label(svg, X(0) + (ar + 38 * SC) * Math.cos(mid), Y(0) - (ar + 38 * SC) * Math.sin(mid) + 5 * SC, 'θmin ' + fmt(g.thetaMinDeg) + '°');
+    /* joints */
+    for (const [q, nm] of [[[0, 0], 'motor shaft'], [C, 'crank pin'], [P, 'link top joint']]) {
+      svgEl('circle', { cx: X(q[0]), cy: Y(q[1]), r: 6, fill: 'var(--paper)', stroke: 'var(--ink)', 'stroke-width': 2.5 }, svg);
+    }
+    label(svg, X(0) - 12, Y(0) + 18 * SC, 'motor shaft', { 'text-anchor': 'end', fill: 'var(--mute)', 'font-size': 12 });
+    label(svg, X(C[0]) + 12, Y(C[1]) + 4 * SC, 'crank pin', { fill: 'var(--mute)', 'font-size': 12 });
+    label(svg, X(P[0]) + 12, Y(P[1]) + 22 * SC, 'link top joint', { fill: 'var(--mute)', 'font-size': 12 });
+    /* dimension labels with badges, the text placed away from the line */
+    const dimLab = (mx, my, nx, ny, letter, text) => {
+      const bx = mx + nx * 26 * SC, by = my + ny * 26 * SC;
+      badge(svg, bx, by, letter);
+      label(svg, bx + (nx < 0 ? -17 : 17) * SC, by + 5 * SC, text, { 'text-anchor': nx < 0 ? 'end' : 'start' });
+    };
+    const dx = X(C[0]) - X(0), dy = Y(C[1]) - Y(0), n = Math.hypot(dx, dy) || 1;
+    let nx = -dy / n, ny = dx / n; if (nx > 0) { nx = -nx; ny = -ny; }          /* put A on the left of the crank */
+    dimLab((X(0) + X(C[0])) / 2, (Y(0) + Y(C[1])) / 2, nx, ny, 'A', 'r ' + fmt(g.r) + ' mm');
+    const lx = X(P[0]) - X(C[0]), ly = Y(P[1]) - Y(C[1]), ln = Math.hypot(lx, ly) || 1;
+    const tB = 0.35, bx0 = X(C[0]) + lx * tB, by0 = Y(C[1]) + ly * tB;
+    let mx2 = ly / ln, my2 = -lx / ln;                                             /* B on the side of the link away from the crank */
+    if (mx2 * (bx0 - X(0)) + my2 * (by0 - Y(0)) < 0) { mx2 = -mx2; my2 = -my2; }
+    dimLab(bx0, by0, mx2, my2, 'B', 'L ' + fmt(g.L) + ' mm');
+    if (Math.abs(g.crankAzDeg) === 90) label(svg, 16, 26, 'Crank points sideways: the link tilts out of this plane, so it is drawn shorter.', { 'font-size': 12, fill: 'var(--mute)' });
+  }
+
+  function drawTop(kin, g) {
+    const svg = $('top'); svg.innerHTML = ''; setU(svg);
+    const cx = 280, cy = 235, R = Math.max(g.Rb, g.Rp), k = 150 / R;
+    const dir = (a, rad) => [cx - Math.sin(a * Math.PI / 180) * rad * k, cy - Math.cos(a * Math.PI / 180) * rad * k];
+    svgEl('circle', { cx, cy, r: g.Rb * k, fill: 'none', stroke: 'var(--mute)', 'stroke-width': 1.5, 'stroke-dasharray': '6 5' }, svg);
+    svgEl('circle', { cx, cy, r: g.Rp * k, fill: 'var(--paper)', stroke: 'var(--ink)', 'stroke-width': 2.5 }, svg);
+    svgEl('circle', { cx, cy, r: 3, fill: 'var(--ink)' }, svg);
+    /* front marker, top left, so it never sits under an arrow */
+    svgEl('path', { d: 'M24 14 L14 34 L34 34 Z', fill: 'var(--accent)' }, svg);
+    label(svg, 44, 30 + 2 * SC, 'FRONT', { fill: 'var(--accent)', 'font-weight': 800 });
+    const cols = ['var(--heave)', 'var(--pitch)', 'var(--roll)'], names = ['X', 'Y', 'Z'];
+    for (let i = 0; i < 3; i++) {
+      const a = g.legAzDeg[i], m = dir(a, g.Rb), j = dir(a, g.Rp);
+      svgEl('line', { x1: j[0], y1: j[1], x2: m[0], y2: m[1], stroke: 'var(--grid-strong)', 'stroke-width': 1.5 }, svg);
+      /* crank arrow, as it points when the crank is horizontal */
+      const ca = (a + g.crankAzDeg) * Math.PI / 180, L = 56, hx = -Math.sin(ca), hy = -Math.cos(ca), ex = m[0] + hx * L, ey = m[1] + hy * L;
+      svgEl('line', { x1: m[0], y1: m[1], x2: ex, y2: ey, stroke: cols[i], 'stroke-width': 6, 'stroke-linecap': 'round' }, svg);
+      svgEl('path', { d: `M${ex + hx * 9} ${ey + hy * 9} L${ex - hy * 7} ${ey + hx * 7} L${ex + hy * 7} ${ey - hx * 7} Z`, fill: cols[i] }, svg);
+      svgEl('circle', { cx: j[0], cy: j[1], r: 7, fill: 'var(--paper)', stroke: 'var(--ink)', 'stroke-width': 2.5 }, svg);
+      badge(svg, m[0], m[1], names[i], cols[i]);
+    }
+    /* radius dimensions: F on the X leg (platform), E on the Y leg (base) */
+    const dim = (a, rad, letter, text, side) => {
+      const p = dir(a, rad), ox = side * 24 * Math.cos(a * Math.PI / 180), oy = -side * 24 * Math.sin(a * Math.PI / 180);
+      svgEl('line', { x1: cx + ox, y1: cy + oy, x2: p[0] + ox, y2: p[1] + oy, stroke: 'var(--ink)', 'stroke-width': 2 }, svg);
+      const mx = (cx + p[0]) / 2 + ox * 1.9, my = (cy + p[1]) / 2 + oy * 1.9;
+      badge(svg, mx, my, letter); label(svg, mx + (side > 0 ? -17 : 17) * SC, my + 5 * SC, text, { 'text-anchor': side > 0 ? 'end' : 'start' });
+    };
+    const near = (t) => { let b = 0, bd = 1e9; g.legAzDeg.forEach((a, i) => { const d = Math.abs(((a - t + 540) % 360) - 180); if (d < bd) { bd = d; b = i; } }); return b; };
+    dim(g.legAzDeg[near(120)], g.Rp, 'F', 'Rp ' + fmt(g.Rp), 1);
+    dim(g.legAzDeg[near(240)], g.Rb, 'E', 'Rb ' + fmt(g.Rb), -1);
+    /* crank direction badge beside the front leg's arrow */
+    const zi = near(0), mz = dir(g.legAzDeg[zi], g.Rb), ca = (g.legAzDeg[zi] + g.crankAzDeg) * Math.PI / 180;
+    badge(svg, mz[0] - Math.sin(ca) * 30 + Math.cos(ca) * 24, mz[1] - Math.cos(ca) * 30 - Math.sin(ca) * 24, 'D');
+  }
+
+  /* ---- live model and status ---- */
+  const cal = (saved && saved.cal) || SEA.defaultCal();
+  let kin = null, view = null;
+  function update() {
+    const g = read(), k = new SEA.Kin(g, cal), st = $('stat');
+    if (!k.ok) {
+      st.className = 'stat bad';
+      st.textContent = 'These numbers cannot form a working leg. The link is too short or too long for the crank and radii. Check A, B, E, F and the angle.';
+      return;
+    }
+    kin = k;
+    const c = k.caps;
+    st.className = 'stat ok';
+    st.textContent = 'Works. Heave range about ' + c.heaveRange.toFixed(0) + ' mm, pitch ±' + c.pitchCap.toFixed(1) + '°, roll ±' + c.rollCap.toFixed(1) + '° (with the saved leg limits). If the model does not look like your platform, one of the numbers is wrong.';
+    if (!view) view = new SEA.PlatformView($('pv'), kin); else view.kin = kin;
+    view.setPose({ h: c.heaveMid, p: 0, r: 0 }); view.draw();
+    drawSide(kin, g); drawTop(kin, g);
+  }
+  ['r', 'L', 'th', 'az', 'sense', 'rb', 'rp', 'ax', 'ay', 'az2'].forEach((id) => $(id).addEventListener('input', update));
+  document.addEventListener('sea-theme', update);
+  let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(update, 150); });
+  update();
+
+  /* ---- actions ---- */
+  $('use').addEventListener('click', () => {
+    const g = read();
+    if (!new SEA.Kin(g, cal).ok) { $('msg').textContent = 'Fix the numbers first.'; return; }
+    try { localStorage.setItem(KEY, JSON.stringify({ geom: g, cal })); $('msg').textContent = 'Saved in this browser. The visualiser and control panel now use these numbers.'; }
+    catch (e) { $('msg').textContent = 'This browser would not save them. Use the plat_config.h lines instead.'; }
+  });
+  $('cfgBtn').addEventListener('click', () => {
+    const g = read(), f = (x) => (Number.isInteger(x) ? x.toFixed(1) : String(x)) + 'f';
+    const t = `#define GEOMETRY_CONFIGURED  1\n#define GEOM_CRANK_R         ${f(g.r)}\n#define GEOM_LINK_L          ${f(g.L)}\n#define GEOM_BASE_R          ${f(g.Rb)}\n#define GEOM_PLATFORM_R      ${f(g.Rp)}\n#define GEOM_THETA_MIN_DEG   ${f(g.thetaMinDeg)}\n#define GEOM_CRANK_AZ_DEG    ${f(g.crankAzDeg)}\n#define GEOM_SENSE           ${g.sense}\n#define GEOM_AZ_LEG0         ${f(g.legAzDeg[0])}\n#define GEOM_AZ_LEG1         ${f(g.legAzDeg[1])}\n#define GEOM_AZ_LEG2         ${f(g.legAzDeg[2])}`;
+    $('cfg').textContent = t; $('cfg').hidden = false;
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { $('msg').textContent = 'Copied. Paste over the matching lines at the bottom of plat_config.h.'; }, () => { $('msg').textContent = 'Select the lines above and copy them.'; });
+  });
+  $('print').addEventListener('click', () => window.print());
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sea Platform control panel</title>
+<meta name="description" content="Control the platform from the browser over USB: pick a mode, press the same keys as the terminal, watch the live pose.">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; }
+  .app { flex: 1; min-height: 0; display: grid; grid-template-columns: 390px minmax(0, 1fr); }
+  .left { overflow-y: auto; border-right: 1.5px solid var(--ink); padding: 16px; display: grid; gap: 20px; align-content: start; }
+  .right { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(220px, 1fr) 200px 190px; }
+  .right > * { min-height: 0; }
+  .viewbox { position: relative; border-bottom: 1.5px solid var(--ink); }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  .viewcap { position: absolute; left: 14px; top: 10px; pointer-events: none; }
+  .viewcap b { font: 800 1.35rem/1.1 var(--font); font-stretch: 122%; display: block; }
+  .viewcap span { color: var(--mute); font-weight: 520; font-size: 0.92rem; }
+  .chartbox { border-bottom: 1.5px solid var(--ink); }
+  #chart { width: 100%; height: 100%; display: block; }
+  .term { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
+  #log { margin: 0; overflow-y: auto; padding: 8px 14px; font: 0.82rem/1.35 ui-monospace, "SF Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-word; background: var(--surface); }
+  #log .tx { color: var(--accent); font-weight: 700; } #log .er { color: #b3261e; font-weight: 700; }
+  .termbar { display: flex; gap: 8px; padding: 8px 14px; border-top: 1.5px solid var(--grid-strong); align-items: center; flex-wrap: wrap; }
+  .termbar input[type="text"] { flex: 1 1 140px; min-height: 36px; padding: 0.3rem 0.5rem; font-family: ui-monospace, Consolas, monospace; }
+  .termbar label { display: flex; gap: 6px; align-items: center; font-size: 0.86rem; font-weight: 560; }
+  h3 { margin-bottom: 0.55rem; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .modes .btn { justify-content: flex-start; padding: 0.6rem 0.75rem; }
+  .modes kbd { background: var(--on-ink); color: var(--ink); border: 0; }
+  .btn.active { background: var(--accent); border-color: var(--accent); color: var(--on-ink); }
+  .stop { width: 100%; justify-content: center; font-size: 1.05rem; min-height: 54px; letter-spacing: 0.01em; }
+  .keys { display: flex; flex-wrap: wrap; gap: 6px; }
+  .keys .btn { padding: 0.45rem 0.65rem; min-height: 40px; font-size: 0.9rem; }
+  .keys .btn kbd { background: var(--on-ink); color: var(--ink); border: 0; padding: 0.02em 0.35em; margin-right: 0.15rem; }
+  .keys .btn:hover kbd { color: var(--ink); }
+  .grp { margin-bottom: 0.85rem; } .grp > .mute { font-size: 0.86rem; font-weight: 600; margin-bottom: 0.35rem; }
+  .sl { display: grid; gap: 2px; margin-bottom: 0.6rem; }
+  .sl .row { justify-content: space-between; font-weight: 600; font-size: 0.92rem; }
+  .msg { font-size: 0.9rem; } .msg.err { color: #b3261e; font-weight: 600; }
+  /* full-screen status display for a TV */
+  #tv { position: fixed; inset: 0; z-index: 60; background: var(--paper); color: var(--ink); display: grid; grid-template-rows: auto minmax(0, 1fr) 20vh; }
+  #tv[hidden] { display: none; }
+  .tvtop { display: flex; align-items: center; gap: 2vw; padding: 1.6vh 2vw; border-bottom: 3px solid var(--ink); flex-wrap: wrap; }
+  #tvMode { font: 800 clamp(1.6rem, 4vw, 4rem)/1.05 var(--font); font-stretch: 122%; flex: 1 1 30%; min-width: 0; }
+  #tvMode small { display: block; font-size: 0.42em; font-weight: 600; color: var(--mute); font-stretch: 100%; margin-top: 0.2em; }
+  #tvChips { display: flex; gap: 1vw; flex-wrap: wrap; }
+  .chip { font: 800 clamp(1rem, 2vw, 1.9rem)/1 var(--font); padding: 0.45em 0.8em; border: 3px solid var(--ink); border-radius: 999px; }
+  .chip.ok { background: #1f7a3d; border-color: #1f7a3d; color: #fff; } .chip.bad { background: #b3261e; border-color: #b3261e; color: #fff; } .chip.warn { background: #f2b705; border-color: #f2b705; color: #111; }
+  #tvClose { align-self: flex-start; }
+  .tvmain { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); min-height: 0; }
+  .tvview { position: relative; border-right: 3px solid var(--ink); min-height: 0; } #tvView { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .tvnums { display: grid; grid-template-rows: repeat(3, 1fr); min-height: 0; }
+  .tvn { display: flex; flex-direction: column; justify-content: center; padding: 0 2vw; border-bottom: 3px solid var(--ink); } .tvn:last-child { border-bottom: 0; }
+  .tvn span { font: 700 clamp(1rem, 2vw, 2rem)/1 var(--font); color: var(--mute); text-transform: uppercase; letter-spacing: 0.06em; }
+  .tvn b { font: 800 clamp(3rem, 8vw, 9rem)/1 var(--font); font-stretch: 112%; font-variant-numeric: tabular-nums; } .tvn b i { font-size: 0.35em; font-style: normal; color: var(--mute); margin-left: 0.2em; }
+  #tvChart { width: 100%; height: 100%; display: block; border-top: 3px solid var(--ink); }
+  #tvAlert { position: absolute; left: 0; right: 0; bottom: 0; background: #b3261e; color: #fff; font: 800 clamp(1.4rem, 3vw, 3rem)/1.1 var(--font); padding: 1.4vh 1.5vw; text-align: center; }
+  #tvAlert[hidden] { display: none; }
+  @media (max-width: 960px) {
+    html, body { height: auto; } body { display: block; }
+    .app { display: block; } .left { border-right: 0; border-bottom: 1.5px solid var(--ink); overflow: visible; }
+    .right { display: block; } .viewbox { height: 52vh; min-height: 300px; } .chartbox { height: 200px; } .term { height: 260px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 17c4-9 8-9 12 0s8 9 12 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M6 27v-5M16 27v-5M26 27v-5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Sea Platform</a>
+  <nav class="nav" aria-label="Pages">
+    <a href="index.html">Project</a><a href="measure.html">Measure</a><a href="guide.html">Run guide</a><a href="visualiser.html">Visualiser</a><a href="control.html" aria-current="page">Control panel</a>
+    <button class="icon-btn" id="theme" type="button" aria-label="Switch light or dark theme" title="Light / dark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button>
+  </nav>
+</header>
+
+<div class="app">
+  <aside class="left" aria-label="Controls">
+    <div>
+      <div class="row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn" type="button" id="conn">Connect</button>
+        <button class="btn ghost" type="button" id="tele" disabled aria-pressed="false">Telemetry</button>
+        <button class="btn" type="button" id="tvOpen" title="Full-screen status display for a TV">TV display</button>
+      </div>
+      <div class="status" style="margin-top:0.7rem"><span class="dot" id="dot"></span><span id="state">Not connected</span></div>
+      <p class="msg" id="msg" style="margin:0.4rem 0 0"></p>
+    </div>
+
+    <button class="btn danger stop" type="button" id="stop" disabled>STOP everything <kbd style="background:#fff;color:#b3261e;border:0">x</kbd></button>
+
+    <div>
+      <h3>Mode</h3>
+      <div class="modes" id="modes"></div>
+      <div class="row" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn small ghost" type="button" id="back" disabled>Back to menu</button>
+        <button class="btn small" type="button" id="rest" disabled title="Send every leg to its minimum, without homing again">Go to rest</button>
+        <button class="btn small ghost" type="button" id="lock" disabled title="Presentation lock: disables Setup, Manual and re-home on the platform. Unlock by typing UNLOCK."><kbd>l</kbd> Lock</button>
+        <button class="btn small ghost" type="button" id="home" disabled title="Run the homing sequence against the limit switches">Re-home</button>
+      </div>
+    </div>
+
+    <div id="pad"></div>
+
+    <div>
+      <h3>Answer a prompt</h3>
+      <div class="keys" id="prompt"></div>
+      <p class="mute" style="font-size:0.86rem;margin:0.5rem 0 0">Homing asks for any key to start, and <kbd>r</kbd> to retry or <kbd>q</kbd> to give up if a switch does not trigger.</p>
+    </div>
+  </aside>
+
+  <section class="right">
+    <div class="viewbox">
+      <canvas id="view" role="img" aria-label="Live platform pose. Drag to turn."></canvas>
+      <div class="viewcap"><b id="vcT">Not connected</b><span id="vcS">Showing the middle of the stroke until the platform reports in.</span></div>
+    </div>
+    <div class="chartbox"><canvas id="chart" role="img" aria-label="Live heave, pitch and roll"></canvas></div>
+    <div class="term">
+      <pre id="log" aria-live="off" aria-label="Messages from the platform">Messages from the platform appear here.
+</pre>
+      <div class="termbar">
+        <input type="text" id="raw" placeholder="Type keys to send" aria-label="Keys to send" autocomplete="off" spellcheck="false" maxlength="24">
+        <button class="btn small" type="button" id="send" disabled>Send</button>
+        <button class="btn small ghost" type="button" id="enter" disabled>Enter</button>
+        <label title="Every key you press goes straight to the platform, one at a time. Held keys do not repeat except the jog keys."><input type="checkbox" id="kbd"> Send my keystrokes</label>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="tv" hidden role="dialog" aria-label="Status display">
+  <div class="tvtop"><div id="tvMode">Not connected</div><div id="tvChips"></div><button class="btn ghost" type="button" id="tvClose">Close (Esc)</button></div>
+  <div class="tvmain">
+    <div class="tvview"><canvas id="tvView" role="img" aria-label="Live platform pose"></canvas><div id="tvAlert" hidden></div></div>
+    <div class="tvnums">
+      <div class="tvn"><span>Heave (from mid)</span><b id="tvH">0<i>mm</i></b></div>
+      <div class="tvn"><span>Pitch</span><b id="tvP">0.0<i>&deg;</i></b></div>
+      <div class="tvn"><span>Roll</span><b id="tvR">0.0<i>&deg;</i></b></div>
+    </div>
+  </div>
+  <canvas id="tvChart" role="img" aria-label="Live heave, pitch and roll"></canvas>
+</div>
+
+<script src="assets/sea.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  SEA.themeToggle($('theme'));
+
+  /* ---- model: same geometry as the visualiser (shared in this browser) ---- */
+  let geom = SEA.defaultGeom(), cal = SEA.defaultCal();
+  try { const s = JSON.parse(localStorage.getItem('sea-setup-v1')); if (s && s.geom && s.cal) { geom = s.geom; cal = s.cal; } } catch (e) {}
+  let kin = new SEA.Kin(geom, cal);
+  if (!kin.ok) { geom = SEA.defaultGeom(); cal = SEA.defaultCal(); kin = new SEA.Kin(geom, cal); }
+  const view = new SEA.PlatformView($('view'), kin);
+  const P = SEA.palette(), K = kin.caps;
+  const series = [
+    { label: 'Heave (from mid-stroke)', unit: 'mm', color: P.heave, range: K.heaveRange / 2, decimals: 1 },
+    { label: 'Pitch', unit: 'deg', color: P.pitch, range: K.pitchCap, decimals: 2 },
+    { label: 'Roll', unit: 'deg', color: P.roll, range: K.rollCap, decimals: 2 }];
+  const chart = new SEA.StripChart($('chart'), series, { seconds: 30, hz: 20 });
+  document.addEventListener('sea-theme', () => chart.s.forEach((s, i) => (s.color = SEA.palette()[['heave', 'pitch', 'roll'][i]])));
+  let pose = { h: K.heaveMid, p: 0, r: 0 };
+  /* ---- full-screen status display ---- */
+  const tvSeries = series.map((x) => Object.assign({}, x));
+  const tvChart = new SEA.StripChart($('tvChart'), tvSeries, { seconds: 30, hz: 20 });
+  const tvView = new SEA.PlatformView($('tvView'), kin); tvView.zoom = 1.15;
+  document.addEventListener('sea-theme', () => tvChart.s.forEach((x, i) => (x.color = SEA.palette()[['heave', 'pitch', 'roll'][i]])));
+  let sea = null, tvLocked = false, tvHomed = false, tvSteps = null, alertText = '', alertAt = 0, tvOpen = false;
+  function tvShow(on) {
+    tvOpen = on; $('tv').hidden = !on;
+    if (on) { try { if (!document.fullscreenElement) $('tv').requestFullscreen().catch(() => {}); } catch (e) {} setTimeout(() => { tvView.resize(); tvChart.resize(); }, 100); }
+    else if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
+  }
+  $('tvOpen').addEventListener('click', () => tvShow(true));
+  $('tvClose').addEventListener('click', () => tvShow(false));
+  document.addEventListener('fullscreenchange', () => { if (tvOpen && !document.fullscreenElement) { tvOpen = false; $('tv').hidden = true; } });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tvOpen) tvShow(false); });
+  window.addEventListener('resize', () => { if (tvOpen) { tvView.resize(); tvChart.resize(); } });
+  function tvPaint() {
+    const live = ser.open && performance.now() - lastTele < 1500;
+    const name = SEA.MODE_NAMES[mode] || 'Mode ' + mode;
+    const sub = !ser.open ? 'Connect the platform in the control panel' : !live ? 'Waiting for telemetry' : (mode === 0 ? 'At the menu, ready' : '');
+    $('tvMode').innerHTML = (!ser.open ? 'Not connected' : (sea && (mode === 4 || mode === 5) ? name + ' &middot; ' + sea : name)) + (sub ? '<small>' + sub + '</small>' : '');
+    const chip = (t, c) => '<span class="chip ' + c + '">' + t + '</span>';
+    $('tvChips').innerHTML = (!ser.open ? chip('OFFLINE', 'bad') : live ? chip('LIVE', 'ok') : chip('NO DATA', 'warn')) +
+      (ser.open && live ? (tvHomed ? chip('HOMED', 'ok') : chip('NOT HOMED', 'warn')) : '') + (tvLocked ? chip('LOCKED', 'warn') : '');
+    $('tvH').innerHTML = (pose.h - K.heaveMid).toFixed(0) + '<i>mm</i>';
+    $('tvP').innerHTML = pose.p.toFixed(1) + '<i>&deg;</i>';
+    $('tvR').innerHTML = pose.r.toFixed(1) + '<i>&deg;</i>';
+    const al = alertText && performance.now() - alertAt < 12000;
+    $('tvAlert').hidden = !al; if (al) $('tvAlert').textContent = alertText;
+  }
+
+  /* ---- serial ---- */
+  const ser = new SEA.Serial();
+  let mode = 0, teleOn = false, lastTele = 0, seenTele = false, waiters = [], menuSeen = false;
+  let phase = 'menu';                                  /* which Setup screen the board is on (read from its own text) */
+  function setPhase(p) { if (p !== phase) { phase = p; if (mode === 1) drawPad(); } }
+  const log = $('log');
+  function addLog(text, cls) {
+    const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+    const span = document.createElement('span'); if (cls) span.className = cls; span.textContent = text; log.appendChild(span);
+    while (log.childNodes.length > 600) log.removeChild(log.firstChild);
+    if (atBottom) log.scrollTop = log.scrollHeight;
+  }
+  /* Everything goes through ser.send(): one character at a time, 18 ms apart, in order.
+     opts.quiet  do not echo it in the log     opts.tag  replaces a waiting message with the same tag
+     opts.now    STOP: drop whatever is waiting and write at once */
+  function send(s, opts) {
+    opts = opts || {};
+    if (!ser.open) return Promise.resolve(false);
+    if (!opts.quiet) addLog(s.replace(/\r/g, '↵').replace(/\x7f/g, '⌫') + ' ', 'tx');
+    return ser.send(s, opts);
+  }
+  ser.onDrop = () => addLog('(too many keys waiting, last one ignored)\n', 'er');
+  function waitFor(re, ms) { return new Promise((res) => { const w = { re, res }; waiters.push(w); setTimeout(() => { const i = waiters.indexOf(w); if (i >= 0) { waiters.splice(i, 1); res(false); } }, ms); }); }
+  ser.onLine = (line, err, partial) => {
+    addLog(line + (partial ? '' : '\n'), err ? 'er' : '');
+    { const m = /Sea state (\d)\s*-\s*([A-Za-z ]+?)\s*\|/.exec(line); if (m) sea = 'SEA STATE ' + m[1] + ' (' + m[2].toLowerCase() + ')'; }
+    { const m = /(HOME SWITCH . FIRED|EMERGENCY STOP|HOMING FAILED[^\n]*|Leg difference limit reached|PRESENTATION LOCK ON)/.exec(line); if (m) { alertText = m[1] === 'PRESENTATION LOCK ON' ? '' : m[1]; alertAt = performance.now(); } }
+    if (/SEA PLATFORM/.test(line)) { menuSeen = true; mode = 0; setPhase('menu'); paintMode(); }
+    else if (/=== SETUP ===/.test(line)) setPhase('menu');
+    else if (/^--- Set MINIMUMS/.test(line)) setPhase('min');
+    else if (/^--- Set MAXIMUM/.test(line)) setPhase('max');
+    else if (/^--- Motion limits/.test(line)) setPhase('motion');
+    else if (/^--- Find the TILT/.test(line)) setPhase('tilt');
+    else if (/^--- Set the largest DIFF/.test(line)) setPhase('diff');
+    const m = /telemetry: (on|off)/.exec(line); if (m) { teleOn = m[1] === 'on'; paintTele(); }
+    if (/Telemetry (on|off)\./.test(line)) { teleOn = /on\./.test(line); paintTele(); }
+    for (let i = waiters.length - 1; i >= 0; i--) if (waiters[i].re.test(line)) { const w = waiters.splice(i, 1)[0]; w.res(true); }
+  };
+  ser.onTelemetry = (t) => {
+    seenTele = true; lastTele = performance.now(); teleOn = true; paintTele();
+    if (t.mode !== 0) menuSeen = false;
+    if (mode !== t.mode) { mode = t.mode; paintMode(); }
+    tvLocked = t.locked; tvHomed = t.homed; if (t.mode !== 4 && t.mode !== 5) sea = null;
+    if (!t.fkFailed) pose = { h: t.h, p: t.p, r: t.r };
+    tvChart.push([pose.h - K.heaveMid, pose.p, pose.r]);
+    chart.push([pose.h - K.heaveMid, pose.p, pose.r]);
+    $('vcT').textContent = SEA.MODE_NAMES[t.mode] || 'Mode ' + t.mode;
+    $('vcS').textContent = (t.homed ? 'Homed. ' : 'Not homed. ') + 'Legs X ' + t.steps[0] + '  Y ' + t.steps[1] + '  Z ' + t.steps[2] + ' steps';
+  };
+  ser.onState = (on) => {
+    ['tele', 'stop', 'back', 'rest', 'home', 'lock', 'send', 'enter'].forEach((id) => ($(id).disabled = !on));
+    document.querySelectorAll('#modes .btn, #pad .btn, #prompt .btn').forEach((b) => (b.disabled = !on));
+    $('conn').textContent = on ? 'Disconnect' : 'Connect';
+    $('dot').className = 'dot' + (on ? ' warn' : ''); $('state').textContent = on ? 'Connected' : 'Not connected';
+    if (!on) { live.checked = false; $('raw').disabled = false; $('raw').placeholder = 'Type keys to send'; phase = 'menu'; seenTele = false; teleOn = false; menuSeen = false; mode = 0; paintMode(); paintTele(); $('vcT').textContent = 'Not connected'; $('vcS').textContent = 'Showing the middle of the stroke until the platform reports in.'; }
+  };
+  setInterval(() => { if (ser.open) { const live = performance.now() - lastTele < 1500; $('dot').className = 'dot ' + (live ? 'on' : 'warn'); $('state').textContent = live ? 'Receiving telemetry' : 'Connected, no telemetry'; } }, 500);
+  function paintTele() { $('tele').setAttribute('aria-pressed', String(teleOn)); $('tele').textContent = teleOn ? 'Telemetry on' : 'Telemetry off'; }
+  paintTele();
+
+  $('conn').addEventListener('click', async () => {
+    $('msg').className = 'msg'; $('msg').textContent = '';
+    if (!SEA.Serial.supported()) { $('msg').className = 'msg err'; $('msg').textContent = 'Web Serial needs desktop Chrome or Edge. Use PuTTY (115200, 8N1) instead, or open this page in one of those browsers.'; return; }
+    try {
+      if (ser.open) { await ser.disconnect(); return; }
+      await ser.connect(115200);
+      await new Promise((r) => setTimeout(r, 300));
+      await send('\r', { quiet: true });              /* reprint the menu so we can read the status line */
+      await waitFor(/Select: |telemetry: /, 1500);     /* only answers if the firmware is at the menu */
+      if (!teleOn && !seenTele) { await send('v'); await new Promise((r) => setTimeout(r, 200)); }
+    } catch (e) { $('msg').className = 'msg err'; $('msg').textContent = e.name === 'NotFoundError' ? 'No port chosen.' : 'Could not open the port: ' + e.message + ' Close PuTTY or any other program using it.'; }
+  });
+  $('tele').addEventListener('click', async () => { if (!(await goMenu())) return; await send('v'); });
+  $('stop').addEventListener('click', () => send('x', { now: true }));
+  $('send').addEventListener('click', () => { const v = $('raw').value; if (v) send(v); $('raw').value = ''; });
+  $('enter').addEventListener('click', () => send('\r'));
+  $('raw').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const v = $('raw').value; send(v + '\r'); $('raw').value = ''; } });
+
+  /* leave whatever mode is running and wait for the menu before sending a mode key */
+  async function goMenu() {
+    if (!ser.open || menuSeen) return true;            /* already at the main menu: q would do nothing */
+    addLog('back to menu\n', 'tx');
+    /* one q at a time: the board can be busy for a while (a leg returning to its minimum) and throws away
+       what arrives meanwhile, so ask again until the menu has really been printed */
+    for (let n = 0; n < 8 && ser.open; n++) {
+      let p = waitFor(/SEA PLATFORM/, 1800);
+      await send('q', { quiet: true });
+      if (await p) return true;
+      p = waitFor(/SEA PLATFORM/, 1000);               /* maybe it is already at the menu: Enter reprints it */
+      await send('\r', { quiet: true });
+      if (await p) return true;
+    }
+    addLog('The platform did not return to the menu. Press STOP or check the Messages.\n', 'er');
+    return false;
+  }
+  async function startMode(n) {
+    if (!(await goMenu())) return;
+    await new Promise((r) => setTimeout(r, 150));
+    await send(String(n));
+    menuSeen = false; mode = n; paintMode();
+  }
+  $('back').addEventListener('click', goMenu);
+  $('rest').addEventListener('click', async () => { if (!(await goMenu())) return; await new Promise((r) => setTimeout(r, 150)); await send('g'); });
+  $('lock').addEventListener('click', async () => { if (!(await goMenu())) return; await new Promise((r) => setTimeout(r, 150)); await send('l'); if (tvLocked) addLog('Type UNLOCK then Enter in the box below to unlock.\n', 'tx'); });
+  $('home').addEventListener('click', async () => { if (!(await goMenu())) return; await new Promise((r) => setTimeout(r, 150)); await send('h'); });
+
+  /* ---- mode buttons and key pads ---- */
+  const MODES = [[1, 'Setup'], [2, 'Heave cycle'], [3, 'Pitch / roll circles'], [4, 'Waves'], [5, 'MAX platform'], [6, 'Manual']];
+  $('modes').innerHTML = MODES.map(([n, t]) => `<button class="btn" type="button" data-mode="${n}" disabled><kbd>${n}</kbd> ${t}</button>`).join('');
+  $('modes').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) startMode(+b.dataset.mode); });
+  function paintMode() {
+    document.querySelectorAll('#modes .btn').forEach((b) => b.classList.toggle('active', +b.dataset.mode === mode));
+    drawPad();
+  }
+  const B = (k, t) => ({ k, t });
+  const PADS = {
+    0: [],
+    1: null,                                  /* depends on the Setup screen, see SETUP_PADS */
+    2: [['Heave cycle', [B('p', 'pause / resume'), B('+', 'faster'), B('-', 'slower'), B(']', 'longer end pause'), B('[', 'shorter end pause'), B('q', 'menu')]]],
+    3: [['Pitch and roll circles', [B('+', 'bigger tilt'), B('-', 'smaller tilt'), B(']', 'slower circle'), B('[', 'faster circle'), B('h', 'heave on / off'), B('r', 'reverse'), B('p', 'pause / resume'), B('q', 'menu')]]],
+    4: [['Sea state', [B('1', 'sea state 1'), B('2', 'sea state 2'), B('3', 'sea state 3'), B('4', 'sea state 4'), B('r', 'new random sea')]],
+        ['Adjust', [B('+', 'bigger waves'), B('-', 'smaller waves'), B(']', 'faster time'), B('[', 'slower time'), B('p', 'pause / resume'), B('q', 'menu')]]],
+    5: [['Sea state', [B('1', 'sea state 1'), B('2', 'sea state 2'), B('3', 'sea state 3'), B('4', 'sea state 4'), B('r', 'new random sea')]],
+        ['Adjust', [B('d', 'full-range sweep on / off'), B('+', 'bigger waves'), B('-', 'smaller waves'), B(']', 'faster time'), B('[', 'slower time'), B('p', 'pause / resume'), B('q', 'menu')]]],
+    6: [['Keys', [B('u', 'heave up'), B('j', 'heave down'), B('w', 'pitch +'), B('s', 'pitch −'), B('d', 'roll +'), B('a', 'roll −'), B('+', 'bigger step'), B('-', 'smaller step'), B('z', 'zero'), B('q', 'menu')]]]
+  };
+  const SETUP_PADS = {
+    menu: [['Setup menu', [B('1', 'minimums'), B('2', 'maximum'), B('3', 'speed limits'), B('4', 'tilt limits'), B('5', 'leg difference'), B('s', 'save to flash'), B('d', 'defaults (unsaved)'), B('h', 're-home'), B('q', 'back')]]],
+    min: [['Minimums: one leg at a time', [B('x', 'leg X'), B('y', 'leg Y'), B('z', 'leg Z'), B('d', 'leg up'), B('a', 'leg down'), B('u', 'all up'), B('j', 'all down'), B('+', 'bigger step'), B('-', 'smaller step'), B('m', 'mark this leg'), B('n', 'mark all'), B('g', 'go to minimums'), B('p', 'print'), B('q', 'done')]]],
+    max: [['Maximum: all three legs', [B('u', 'up'), B('j', 'down'), B('+', 'bigger step'), B('-', 'smaller step'), B('m', 'mark maximum'), B('g', 'back to minimums'), B('q', 'done')]]],
+    motion: [['Speed and acceleration limits', [B('+', 'faster limit'), B('-', 'slower limit'), B(']', 'more acceleration'), B('[', 'less acceleration'), B('q', 'done')]]],
+    tilt: [['Find the tilt limits', [B('w', 'pitch +'), B('s', 'pitch −'), B('d', 'roll +'), B('a', 'roll −'), B('u', 'heave up'), B('j', 'heave down'), B('+', 'bigger step'), B('-', 'smaller step'), B('z', 'level again')]],
+           ['Mark and finish', [B('p', 'mark PITCH limit here'), B('r', 'mark ROLL limit here'), B('l', 'list limits'), B('c', 'clear limits'), B('q', 'done')]]],
+    diff: [['Leg difference limit', [B('x', 'leg X'), B('y', 'leg Y'), B('z', 'leg Z'), B('d', 'leg up'), B('a', 'leg down'), B('u', 'all up'), B('j', 'all down'), B('+', 'bigger step'), B('-', 'smaller step')]],
+           ['Mark and finish', [B('m', 'mark this difference'), B('c', 'clear limit'), B('g', 'back to minimums'), B('p', 'print'), B('q', 'done')]]]
+  };
+  function padsFor() { return mode === 1 ? (SETUP_PADS[phase] || SETUP_PADS.menu) : (PADS[mode] || []); }
+  function drawPad() {
+    const el = $('pad'); let html = '';
+    if (mode === 6) {
+      const h = K.heaveRange / 2;
+      html += `<h3>Set a pose</h3>
+        <div class="sl"><div class="row" style="display:flex"><label for="sh">Heave (mm, 0 = mid)</label><output id="oh">0</output></div><input type="range" id="sh" min="${-h.toFixed(0)}" max="${h.toFixed(0)}" step="0.5" value="0"></div>
+        <div class="sl"><div class="row" style="display:flex"><label for="sp">Pitch (deg)</label><output id="op">0</output></div><input type="range" id="sp" min="${-K.pitchCap.toFixed(0)}" max="${K.pitchCap.toFixed(0)}" step="0.25" value="0"></div>
+        <div class="sl"><div class="row" style="display:flex"><label for="sr">Roll (deg)</label><output id="or">0</output></div><input type="range" id="sr" min="${-K.rollCap.toFixed(0)}" max="${K.rollCap.toFixed(0)}" step="0.25" value="0"></div>
+        <p class="mute" style="font-size:0.86rem;margin:0 0 0.9rem">The platform moves when you let go of a slider. The firmware shrinks a pose that would push a leg past its limit.</p>`;
+    }
+    padsFor().forEach(([title, keys]) => {
+      html += `<div class="grp"><div class="mute">${title}</div><div class="keys">${keys.map((x) => `<button class="btn small ghost" type="button" data-k="${x.k.replace('"', '&quot;')}"><kbd>${x.k}</kbd>${x.t}</button>`).join('')}</div></div>`;
+    });
+    if (mode === 0) html = '<p class="mute">Pick a mode above. The keys for it appear here.</p>';
+    el.innerHTML = html;
+    el.querySelectorAll('.btn').forEach((b) => (b.disabled = !ser.open));
+    if (mode === 6) ['h', 'p', 'r'].forEach((k) => {
+      const sl = $('s' + k), out = $('o' + k);
+      sl.addEventListener('input', () => (out.textContent = sl.value));
+      /* only the latest position of each slider matters: a newer one replaces one still waiting */
+      sl.addEventListener('change', () => send(k + sl.value + '\r', { tag: 'pose-' + k }));
+    });
+  }
+  $('pad').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-k]'); if (!b) return;
+    if (ser.queued() > 8) return;                         /* a burst of clicks must not pile up moves */
+    send(b.dataset.k);
+    if (mode === 6 && b.dataset.k === 'z') ['sh', 'sp', 'sr'].forEach((id, i) => { const s = $(id), o = $(['oh', 'op', 'or'][i]); if (s) { s.value = 0; o.textContent = '0'; } });
+  });
+  $('prompt').innerHTML = [['␣', ' ', 'any key'], ['y', 'y', 'yes'], ['r', 'r', 'retry'], ['q', 'q', 'cancel']].map(([lab, k, t]) => `<button class="btn small ghost" type="button" data-k="${k}" disabled><kbd>${lab}</kbd>${t}</button>`).join('');
+  $('prompt').addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (b && ser.queued() <= 8) send(b.dataset.k); });
+  paintMode();
+
+  /* ---- live keystrokes ------------------------------------------------------------------------------
+     While "Send my keystrokes" is ticked every key goes straight to the board, wherever the cursor is.
+     - only printable keys, Enter and Backspace; nothing else is forwarded
+     - a key held down is NOT repeated, except the jog keys, and those at most 8 times a second and only when
+       nothing is waiting (so a held key can never build up a queue of moves that carries on after you let go)
+     - the key never also "clicks" whatever button or slider happens to have focus */
+  const live = $('kbd');
+  function keyChar(e) {
+    if (e.key === 'Enter') return '\r';
+    if (e.key === 'Backspace') return '\x7f';
+    if (e.key && e.key.length === 1 && e.key >= ' ' && e.key <= '~') return e.key;
+    return null;
+  }
+  function repeatOk(ch) {
+    const c = ch.toLowerCase();
+    if (mode === 6) return 'ujwsda'.includes(c);
+    if (mode === 1) { const j = { min: 'ujda', max: 'uj', tilt: 'ujwsda', diff: 'ujda' }[phase]; return !!j && j.includes(c); }
+    return false;
+  }
+  const lastKeyAt = {};
+  window.addEventListener('keydown', (e) => {
+    if (!live.checked || !ser.open || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+    const ch = keyChar(e);
+    if (ch === null) return;
+    e.preventDefault(); e.stopPropagation();
+    const now = performance.now();
+    if (e.repeat && (!repeatOk(ch) || ser.queued() > 0 || now - (lastKeyAt[ch] || 0) < 125)) return;
+    lastKeyAt[ch] = now;
+    /* x is the emergency stop in every mode except the Setup screens, where it picks leg X */
+    send(ch, (ch === 'x' || ch === 'X') && mode >= 2 ? { now: true } : {});
+  }, true);
+  window.addEventListener('keyup', (e) => {
+    if (live.checked && ser.open && !e.ctrlKey && !e.metaKey && !e.altKey && keyChar(e) !== null) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  document.addEventListener('mousedown', (e) => { if (live.checked && e.target.closest && e.target.closest('button')) e.preventDefault(); });   /* buttons never take the keyboard focus */
+  live.addEventListener('change', () => {
+    $('raw').disabled = live.checked; $('send').disabled = live.checked || !ser.open; $('enter').disabled = !ser.open;
+    $('raw').placeholder = live.checked ? 'Live keys on: type anywhere, nothing is typed here' : 'Type keys to send';
+    if (live.checked) { live.blur(); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
+  });
+
+  /* ---- draw loop ---- */
+  (function frame() {
+    if (tvOpen) { tvView.setPose(pose); tvView.draw(); tvChart.draw(); tvPaint(); }
+    else { view.setPose(pose); view.draw(); chart.draw(); }
+    requestAnimationFrame(frame);
+  })();
+  if (!SEA.Serial.supported()) { $('msg').className = 'msg err'; $('msg').textContent = 'This browser has no Web Serial. Use desktop Chrome or Edge, or the PuTTY terminal.'; }
+})();
+</script>
+</body>
+</html>

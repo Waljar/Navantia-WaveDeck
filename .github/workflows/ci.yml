@@ -1,0 +1,15 @@
+# Runs the PC tests: kinematics, wave generator, step engine, a scripted session of
+# the whole menu, and the JavaScript-versus-C comparison.
+name: Tests
+on:
+  push:
+  pull_request:
+jobs:
+  pc-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: sh sim/build_tests.sh

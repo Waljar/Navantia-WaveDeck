@@ -1,0 +1,14 @@
+# build output
+*.o
+*.elf
+*.bin
+*.map
+Debug/
+Release/
+.metadata/
+.settings/
+# test binaries
+sim/test_core
+sim/test_menu
+sim/sea_*
+node_modules/
