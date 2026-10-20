@@ -3,7 +3,7 @@
 A three-leg stepper motion platform that reproduces the heave, pitch and roll of a vessel in sea states 1 to 4.
 One firmware program with a menu of six modes, a visualiser that runs the same waves in the browser, and a browser control panel that talks to the board over USB.
 
-- **Project site:** `docs/index.html` (published with GitHub Pages, see [Publish the site](#publish-the-site))
+- **Project site:** `docs/index.html` 
 - **Visualiser:** `docs/visualiser.html` — sea states 1 to 4 on a 3D model, MAX mode, live view of the real platform
 - **Control panel:** `docs/control.html` — Chrome or Edge, Web Serial, same keys as the terminal
 - **Run guide:** `docs/guide.html` — step by step from wiring check to shutdown, with the exact messages the program prints (printable: `docs/pdf/sea-platform-run-guide.pdf`)
